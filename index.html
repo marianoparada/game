@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>ROMPETUTI - Phaser Web</title>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+  <style> body { margin:0; } canvas { display:block; } </style>
+</head>
+<body>
+<script>
+window.onload = () => {
+  const config = {
+    type: Phaser.AUTO,
+    backgroundColor: '#000000',
+    scale: {
+      mode: Phaser.Scale.RESIZE,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+      width: window.innerWidth,
+      height: window.innerHeight,
+    },
+    scene: { preload, create, update }
+  };
+  const game = new Phaser.Game(config);
+
+  let pantallaInicio, pantallaGameOver, fondo, rompetuti, inodoro;
+  let startButton, restartButton, exitButton;
+  let pinturas = [], manchas = [];
+  let cacometro = 0, banio = 0, nivel = 1, puntaje = 0;
+  let timer = 0, dirTimer = 0;
+  let jugando = false, gameOver = false;
+  let sonidoPintura, sonidoNivel, sonidoGameOver, musicaIntro;
+  let graphics, cacoText, banioText;
+
+  function preload() {
+    for (let i = 1; i <= 4; i++) this.load.image(`fondo${i}`, `assets/fondo${i}.png`);
+    this.load.image('pantallaInicio', 'assets/pantalla_inicio.png');
+    this.load.image('pantallaGameOver', 'assets/pantalla_gameover.png');
+    this.load.image('rompetuti', 'assets/rompetuti.png');
+    this.load.image('rompetuti2','assets/rompetuti2.png');
+    this.load.image('inodoro', 'assets/inodoro.png');
+    this.load.audio('pintura', 'assets/pintura.mp3');
+    this.load.audio('nivel',   'assets/nivel.mp3');
+    this.load.audio('perdiste','assets/perdiste.mp3');
+    this.load.audio('intro',   'assets/intro.mp3');
+  }
+
+  function create() {
+    musicaIntro = this.sound.add('intro', { loop: true, volume: 0.5 });
+    musicaIntro.play();
+
+    pantallaInicio = this.add.image(0, 0, 'pantallaInicio').setOrigin(0).setDepth(10)
+      .setDisplaySize(this.scale.width, this.scale.height);
+    pantallaGameOver = this.add.image(0, 0, 'pantallaGameOver').setOrigin(0).setDepth(10)
+      .setDisplaySize(this.scale.width, this.scale.height).setVisible(false);
+
+    fondo = this.add.image(0, 0, 'fondo1').setOrigin(0).setDepth(0)
+      .setDisplaySize(this.scale.width, this.scale.height);
+
+    // Posición fija a 200px desde arriba
+    rompetuti = this.add.sprite(this.scale.width / 2, 200, 'rompetuti').setDepth(1);
+    rompetuti.setDisplaySize(160, 200);
+
+    inodoro = this.add.sprite(this.scale.width / 2, this.scale.height - 60, 'inodoro').setDepth(1);
+    inodoro.setDisplaySize(240, 120);
+
+    sonidoPintura  = this.sound.add('pintura');
+    sonidoNivel    = this.sound.add('nivel');
+    sonidoGameOver = this.sound.add('perdiste');
+
+    graphics  = this.add.graphics().setDepth(2);
+    cacoText  = this.add.text(10, 10, 'CACÓMETRO', { fontSize: '20px', fill: '#000' }).setDepth(2);
+    banioText = this.add.text(this.scale.width - 10, 10, 'BAÑO EXPLOTADO', { fontSize: '20px', fill: '#000' })
+      .setOrigin(1, 0).setDepth(2);
+
+    // Botón de inicio
+    startButton = this.add.text(this.scale.width/2, this.scale.height - 80, 'COMENZAR PARTIDA',
+      { fontSize: '32px', fill: '#fff', backgroundColor: '#000', padding: { x:10,y:5 } })
+      .setOrigin(0.5).setDepth(11).setInteractive();
+    startButton.on('pointerdown', () => {
+      pantallaInicio.setVisible(false);
+      startButton.setVisible(false);
+      musicaIntro.stop();
+      jugando = true;
+    });
+
+    this.scale.on('resize', (gameSize) => {
+      const w = gameSize.width, h = gameSize.height;
+      pantallaInicio.setDisplaySize(w,h);
+      pantallaGameOver.setDisplaySize(w,h);
+      fondo.setDisplaySize(w,h);
+      banioText.setX(w - 10);
+      inodoro.setY(h - 60);
+      startButton.setPosition(w/2, h - 80);
+      if (restartButton) restartButton.setY(h - 80).setX(w/2 - 100);
+      if (exitButton)    exitButton.setY(h - 80).setX(w/2 + 100);
+    });
+  }
+
+  function update() {
+    if (!jugando) return;
+    if (gameOver) return;
+
+    const cursors = this.input.keyboard.createCursorKeys();
+    let speed = 8 + nivel;
+    if (cursors.left.isDown)  inodoro.x = Phaser.Math.Clamp(inodoro.x - speed, 120, this.scale.width - 120);
+    if (cursors.right.isDown) inodoro.x = Phaser.Math.Clamp(inodoro.x + speed, 120, this.scale.width - 120);
+
+    rompetuti.x += rompetuti.vx ?? (rompetuti.vx = 6 * (Math.random() < 0.5 ? -1 : 1));
+    if (rompetuti.x < 200 || rompetuti.x > this.scale.width - 200) rompetuti.vx *= -1;
+    dirTimer++;
+    if (dirTimer > 90) {
+      dirTimer = 0;
+      let nv = Phaser.Math.Between(4, 6 + nivel);
+      rompetuti.vx = (Math.random() < 0.5 ? -nv : nv);
+    }
+
+    timer++;
+    if (timer > Math.max(10, 60 - nivel * 5)) {
+      timer = 0;
+      let pinta = this.add.rectangle(rompetuti.x, rompetuti.y + 200, 10, 20, 0x8B4513).setDepth(1);
+      pinturas.push(pinta);
+      sonidoPintura.play();
+    }
+
+    pinturas.forEach((p, i) => {
+      p.y += 6 + nivel;
+      if (Phaser.Geom.Intersects.RectangleToRectangle(p.getBounds(), inodoro.getBounds())) {
+        p.destroy(); pinturas.splice(i, 1);
+        cacometro += 10; puntaje += 10;
+      } else if (p.y > this.scale.height) {
+        manchas.push(p);
+        pinturas.splice(i, 1);
+        banio += 10;
+      }
+    });
+
+    if (cacometro >= 100) {
+      cacometro = 0; nivel++;
+      fondo.setTexture(`fondo${(nivel - 1) % 4 + 1}`);
+      sonidoNivel.play();
+    }
+
+    graphics.clear();
+    graphics.lineStyle(2, 0x000000).strokeRect(10, 30, 200, 20);
+    graphics.fillStyle(0x00ff00, 1).fillRect(12, 32, 1.96 * cacometro, 16);
+    graphics.lineStyle(2, 0x000000).strokeRect(this.scale.width - 210, 30, 200, 20);
+    graphics.fillStyle(0x8B4513, 1).fillRect(this.scale.width - 12 - banio * 1.96, 32, banio * 1.96, 16);
+
+    if (banio >= 100) {
+      gameOver = true;
+      sonidoGameOver.play();
+      pantallaGameOver.setVisible(true);
+      // Botones de game over
+      restartButton = this.add.text(this.scale.width/2 - 100, this.scale.height - 80, 'VOLVER A EMPEZAR',
+        { fontSize: '28px', fill: '#fff', backgroundColor: '#000', padding:{x:10,y:5} })
+        .setOrigin(0.5).setDepth(11).setInteractive();
+      exitButton = this.add.text(this.scale.width/2 + 100, this.scale.height - 80, 'SALIR DEL JUEGO',
+        { fontSize: '28px', fill: '#fff', backgroundColor: '#000', padding:{x:10,y:5} })
+        .setOrigin(0.5).setDepth(11).setInteractive();
+
+      restartButton.on('pointerdown', () => window.location.reload());
+      exitButton.on('pointerdown', () => window.close());
+    }
+  }
+};
+</script>
+</body>
+</html>
