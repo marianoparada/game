@@ -228,7 +228,7 @@ window.onload = () => {
       .setOrigin(0.5).setDepth(11).setInteractive({ useHandCursor: true }); // <-- ESTE SÍ DEBE SER INTERACTIVO
 
     this.startButton.on('pointerdown', () => {
-      if (!checkOrientation()) return;
+      
 
       this.pantallaInicio.setVisible(false);
       this.startButton.setVisible(false);
