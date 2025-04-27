@@ -6,232 +6,527 @@
   <title>ROMPETUTI - Phaser Web</title>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
   <style>
-    body { margin: 0; overflow: hidden; }
+    body { margin: 0; overflow: hidden; background-color: #000; } /* Fondo negro para body */
     canvas { display: block; }
     #rotate-device-message {
       display: none;
-      position: fixed; top: 0; left: 0;
-      width: 100%; height: 100%;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       background-color: rgba(0,0,0,0.9);
-      color: white; z-index: 9999;
-      text-align: center; padding-top: 40vh;
-      font-size: 20px; font-family: sans-serif;
-      box-sizing: border-box; padding: 0 10px;
+      color: white;
+      z-index: 9999;
+      text-align: center;
+      padding-top: 40vh;
+      font-size: 20px;
+      font-family: sans-serif;
+      box-sizing: border-box;
+      padding-left: 10px;
+      padding-right: 10px;
     }
+     /* Botón opcional para pantalla completa (se mantiene por si falla el automático) */
     #fullscreen-button {
-      position: fixed; top: 10px; right: 10px; z-index: 10000;
-      padding: 8px 12px;
-      background-color: rgba(0,0,0,0.6);
-      color: #fff; border: 1px solid #fff;
-      border-radius: 5px; font-size: 14px;
-      cursor: pointer; display: none;
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        z-index: 10000;
+        padding: 8px 12px;
+        background-color: rgba(0, 0, 0, 0.6);
+        color: white;
+        border: 1px solid white;
+        border-radius: 5px;
+        font-size: 14px;
+        cursor: pointer;
+        display: none; /* Oculto inicialmente */
     }
   </style>
 </head>
 <body>
-  <div id="rotate-device-message">Por favor, rota tu dispositivo a modo horizontal para jugar.</div>
+  <div id="rotate-device-message">
+    Por favor, rota tu dispositivo a modo horizontal para jugar.
+  </div>
   <button id="fullscreen-button">Pantalla Completa</button>
+
 <script>
 window.onload = () => {
   const rotateMessage = document.getElementById('rotate-device-message');
-  const fsBtn = document.getElementById('fullscreen-button');
+  const fullscreenButton = document.getElementById('fullscreen-button');
   let game = null;
 
-  fsBtn.addEventListener('click', () => {
-    if (game && !game.scale.isFullscreen) {
-      game.scale.startFullscreen();
+  // --- Función para entrar en pantalla completa ---
+  function enterFullscreen() {
+    const elem = document.documentElement;
+    if (!document.fullscreenElement && // Solo intentar si no estamos ya en fullscreen
+        (document.fullscreenEnabled || document.webkitFullscreenEnabled || document.mozFullScreenEnabled || document.msFullscreenEnabled)) {
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(err => {
+          console.error(`Error al intentar entrar en pantalla completa: ${err.message} (${err.name})`);
+          // Si falla el automático, mostramos el botón como fallback
+           if (fullscreenButton) fullscreenButton.style.display = 'block';
+        });
+      } else if (elem.mozRequestFullScreen) { /* Firefox */
+        elem.mozRequestFullScreen();
+      } else if (elem.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+        elem.webkitRequestFullscreen();
+      } else if (elem.msRequestFullscreen) { /* IE/Edge */
+        elem.msRequestFullscreen();
+      }
     }
-    fsBtn.style.display = 'none';
-  });
+     // Oculta el botón si logramos entrar o si no es soportado
+    if (fullscreenButton) fullscreenButton.style.display = 'none';
+  }
+
+  // --- Listener para el botón de pantalla completa (fallback) ---
+   if (fullscreenButton) {
+       fullscreenButton.addEventListener('click', enterFullscreen);
+   }
 
   function checkOrientation() {
     const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+
     if (isPortrait) {
       rotateMessage.style.display = 'block';
-      fsBtn.style.display = 'none';
-      if (game && game.isBooted) {
-        if (game.scene.isActive('default')) game.scene.pause('default');
-        if (window.musicaIntro && window.musicaIntro.isPlaying) window.musicaIntro.stop();
-      }
+      if (fullscreenButton) fullscreenButton.style.display = 'none';
+       if (game && game.isBooted && game.scene.isActive('default')) {
+           game.scene.pause('default');
+       }
+       if (window.musicaIntro && window.musicaIntro.isPlaying) window.musicaIntro.stop();
       return false;
-    } else {
+    } else { // Es Landscape
       rotateMessage.style.display = 'none';
+
+      // --- Intenta entrar en pantalla completa automáticamente ---
+      // Lo intentamos aquí al detectar landscape, pero puede requerir interacción
+      enterFullscreen();
+      // ----------------------------------------------------------
+
+      // Muestra el botón de pantalla completa MANUAL solo si la API es soportada y NO estamos ya en fullscreen
+      // (Se ocultará si enterFullscreen() tiene éxito)
+      if (fullscreenButton &&
+          (document.fullscreenEnabled || document.webkitFullscreenEnabled || document.mozFullScreenEnabled || document.msFullscreenEnabled) &&
+          !document.fullscreenElement) {
+          // Inicialmente lo mostramos, enterFullscreen() lo ocultará si tiene éxito.
+          // Si enterFullscreen() falla (p.ej. necesita interacción), el botón permanecerá visible.
+          fullscreenButton.style.display = 'block';
+      } else if (fullscreenButton) {
+          fullscreenButton.style.display = 'none'; // Ocultar si ya está fullscreen o no es soportado
+      }
+
+
       if (game && game.isBooted) {
-        if (game.scene.isPaused('default')) game.scene.resume('default');
-        if (!window.jugando && window.pantallaInicio && window.pantallaInicio.visible &&
-            window.musicaIntro && !window.musicaIntro.isPlaying) {
-          window.musicaIntro.play();
-        }
-        fsBtn.style.display = 'block';
+          if (game.scene.isPaused('default')) {
+              game.scene.resume('default');
+          }
+          // Reanuda la música si estaba en pantalla de inicio
+          if (!window.jugando && window.pantallaInicio && window.pantallaInicio.visible && window.musicaIntro && !window.musicaIntro.isPlaying) {
+               window.musicaIntro.play();
+          }
       } else if (!game) {
-        initializeGame();
+          initializeGame(); // Inicializa el juego si no existe
       }
       return true;
     }
   }
 
   function initializeGame() {
-    if (game) return;
     const config = {
       type: Phaser.AUTO,
       backgroundColor: '#000000',
-      scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH, width: window.innerWidth, height: window.innerHeight },
-      input: { activePointers: 1 },
-      scene: { init, preload, create, update }
+      scale: {
+        mode: Phaser.Scale.RESIZE,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: window.innerWidth,
+        height: window.innerHeight,
+      },
+       input: {
+        activePointers: 1 // Permitir solo un puntero activo (dedo/mouse)
+      },
+      scene: {
+        init: function() {
+            // Inicializar variables de la escena aquí si es necesario
+            this.nivel = 1; // <<-- INICIALIZACIÓN NIVEL
+            this.cacometro = 0;
+            this.banio = 0;
+            this.puntaje = 0;
+            this.timer = 0; // Timer para spawn de pintura
+            this.dirTimer = 0; // Timer para cambio de dirección de rompetuti
+            this.pinturas = [];
+            this.manchas = [];
+            this.jugando = false;
+            this.gameOver = false;
+        },
+        preload: preload,
+        create: create,
+        update: update
+      }
     };
-    game = new Phaser.Game(config);
-    window.game = game;
-  }
 
-  function init() {
-    this.pantallaInicio = this.pantallaGameOver = this.fondo = this.rompetuti = this.inodoro = null;
-    this.startButton = this.restartButton = this.exitButton = null;
-    this.pinturas = []; this.manchas = [];
-    this.cacometro = this.banio = this.nivel = this.puntaje = this.timer = this.dirTimer = 0;
-    this.jugando = this.gameOver = false;
-    this.sonidoPintura = this.sonidoNivel = this.sonidoGameOver = this.graphics = this.cacoText = this.banioText = null;
-    window.musicaIntro = null; window.jugando = false; window.pantallaInicio = null;
+    game = new Phaser.Game(config);
+    window.game = game; // Hacer accesible globalmente si es necesario
   }
 
   function preload() {
-    for (let i = 1; i <= 4; i++) this.load.image(`fondo${i}`, `assets/fondo${i}.jpg`);
-    this.load.image('pantallaInicio', 'assets/pantalla_inicio.jpg');
-    this.load.image('pantallaGameOver', 'assets/pantalla_gameover.jpg');
+    // Carga de assets (sin cambios)
+    for (let i = 1; i <= 4; i++) this.load.image(`fondo${i}`, `assets/fondo${i}.png`);
+    this.load.image('pantallaInicio', 'assets/pantalla_inicio.png');
+    this.load.image('pantallaGameOver', 'assets/pantalla_gameover.png');
     this.load.image('rompetuti', 'assets/rompetuti.png');
-    this.load.image('rompetuti2', 'assets/rompetuti2.png');
+    this.load.image('rompetuti2','assets/rompetuti2.png'); // No usado actualmente?
     this.load.image('inodoro', 'assets/inodoro.png');
     this.load.audio('pintura', 'assets/pintura.mp3');
-    this.load.audio('nivel', 'assets/nivel.mp3');
-    this.load.audio('perdiste', 'assets/perdiste.mp3');
-    this.load.audio('intro', 'assets/intro.mp3');
+    this.load.audio('nivel',   'assets/nivel.mp3');
+    this.load.audio('perdiste','assets/perdiste.mp3');
+    this.load.audio('intro',   'assets/intro.mp3');
   }
 
   function create() {
+    // Música de intro
     window.musicaIntro = this.sound.add('intro', { loop: true, volume: 0.5 });
-    if (checkOrientation() && !window.musicaIntro.isPlaying) window.musicaIntro.play();
+    if (checkOrientation() && !window.jugando && !window.musicaIntro.isPlaying) { // Solo si estamos en landscape y no jugando
+        window.musicaIntro.play();
+    }
 
-    this.pantallaInicio = this.add.image(0,0,'pantallaInicio').setOrigin(0).setDepth(10)
+    // Pantallas de inicio y game over
+    this.pantallaInicio = this.add.image(0, 0, 'pantallaInicio').setOrigin(0).setDepth(10)
       .setDisplaySize(this.scale.width, this.scale.height).setInteractive();
-    window.pantallaInicio = this.pantallaInicio;
+    window.pantallaInicio = this.pantallaInicio; // Referencia global
 
-    this.pantallaGameOver = this.add.image(0,0,'pantallaGameOver').setOrigin(0).setDepth(10)
+    this.pantallaGameOver = this.add.image(0, 0, 'pantallaGameOver').setOrigin(0).setDepth(10)
       .setDisplaySize(this.scale.width, this.scale.height).setVisible(false);
 
-    this.fondo = this.add.image(0,0,'fondo1').setOrigin(0).setDepth(0)
+    // Fondo inicial (basado en this.nivel inicializado en init)
+    this.fondo = this.add.image(0, 0, `fondo${(this.nivel - 1) % 4 + 1}`).setOrigin(0).setDepth(0) // <<-- FONDO INICIAL
       .setDisplaySize(this.scale.width, this.scale.height);
 
-    this.rompetuti = this.add.sprite(this.scale.width/2, 200, 'rompetuti')
-      .setDepth(1).setDisplaySize(this.scale.width*0.1, this.scale.height*0.2);
-    this.inodoro = this.add.sprite(this.scale.width/2, this.scale.height-60, 'inodoro')
-      .setDepth(1).setDisplaySize(this.scale.width*0.2, this.scale.height*0.2);
+    // Personajes
+    const initialYRompetuti = this.scale.height * 0.10; // <<-- POSICIÓN Y ROMPETUTI (10%)
+    this.rompetuti = this.add.sprite(this.scale.width / 2, initialYRompetuti, 'rompetuti').setDepth(1);
+    this.rompetuti.setDisplaySize(160, 200); // Ajusta tamaño si es necesario
+    this.rompetuti.vx = 0; // Inicializar velocidad horizontal
 
-    this.sonidoPintura = this.sound.add('pintura');
-    this.sonidoNivel   = this.sound.add('nivel');
-    this.sonidoGameOver= this.sound.add('perdiste');
+    this.inodoro = this.add.sprite(this.scale.width / 2, this.scale.height - 60, 'inodoro').setDepth(1);
+    this.inodoro.setDisplaySize(240, 120); // Ajusta tamaño si es necesario
 
-    this.graphics = this.add.graphics().setDepth(2);
-    this.cacoText = this.add.text(10,10,'CACÓMETRO',{fontSize:'20px',fill:'#fff'}).setDepth(2);
-    this.banioText= this.add.text(this.scale.width-10,10,'BAÑO EXPLOTADO',{fontSize:'20px',fill:'#fff'})
-      .setOrigin(1,0).setDepth(2);
+    // Sonidos del juego
+    this.sonidoPintura  = this.sound.add('pintura', { volume: 0.7 });
+    this.sonidoNivel    = this.sound.add('nivel');
+    this.sonidoGameOver = this.sound.add('perdiste');
 
-    this.startButton = this.add.text(this.scale.width/2, this.scale.height-80,'COMENZAR PARTIDA',{fontSize:'32px',fill:'#fff',backgroundColor:'#000',padding:{x:10,y:5}})
-      .setOrigin(0.5).setDepth(11).setInteractive({useHandCursor:true})
-      .on('pointerdown', () => {
-        if (!checkOrientation()) return;
-        this.pantallaInicio.setVisible(false);
-        this.startButton.setVisible(false);
-        if (window.musicaIntro.isPlaying) window.musicaIntro.stop();
-        this.jugando = window.jugando = true;
-        if (this.scene.isPaused()) this.scene.resume();
-      });
+    // Elementos UI (Barras y Texto)
+    this.graphics  = this.add.graphics().setDepth(2);
+    this.cacoText  = this.add.text(10, 10, 'CACÓMETRO', { fontSize: '20px', fill: '#FFFFFF', stroke: '#000000', strokeThickness: 3 }).setDepth(2);
+    this.banioText = this.add.text(this.scale.width - 10, 10, 'BAÑO EXPLOTADO', { fontSize: '20px', fill: '#FFFFFF', stroke: '#000000', strokeThickness: 3 })
+      .setOrigin(1, 0).setDepth(2);
+    this.nivelText = this.add.text(this.scale.width / 2, 10, `NIVEL: ${this.nivel}`, { fontSize: '20px', fill: '#FFFFFF', stroke: '#000000', strokeThickness: 3}).setOrigin(0.5, 0).setDepth(2);
 
-    // Touch movement for inodoro
-    this.input.on('pointermove', pointer => {
-      if (this.jugando && !this.gameOver && pointer.isDown) {
-        const w = this.scale.width, iw = this.inodoro.displayWidth;
-        this.inodoro.x = Phaser.Math.Clamp(pointer.x, iw/2, w-iw/2);
+
+    // Botón de inicio
+    this.startButton = this.add.text(this.scale.width/2, this.scale.height - 80, 'COMENZAR PARTIDA',
+      { fontSize: '32px', fill: '#fff', backgroundColor: '#000', padding: { x:10,y:5 } })
+      .setOrigin(0.5).setDepth(11).setInteractive({ useHandCursor: true });
+
+    this.startButton.on('pointerdown', () => {
+      if (!checkOrientation()) return; // No empezar si está en portrait
+
+      // --- Intenta entrar en pantalla completa (al hacer clic, más fiable) ---
+      // enterFullscreen(); // Movido a checkOrientation, pero puede dejarse aquí como respaldo
+      // --------------------------------------------------------------------
+
+      this.pantallaInicio.setVisible(false);
+      this.startButton.setVisible(false);
+      if (window.musicaIntro && window.musicaIntro.isPlaying) window.musicaIntro.stop();
+
+      // Iniciar estado del juego
+      this.jugando = true;
+      window.jugando = true; // Actualiza referencia global
+      this.gameOver = false;
+      this.nivel = 1; // Reinicia nivel al comenzar
+      this.cacometro = 0;
+      this.banio = 0;
+      this.pinturas.forEach(p => p.destroy()); // Limpia pinturas anteriores
+      this.pinturas = [];
+      this.manchas.forEach(m => m.destroy()); // Limpia manchas anteriores
+      this.manchas = [];
+      this.nivelText.setText(`NIVEL: ${this.nivel}`); // Actualiza texto nivel
+      this.fondo.setTexture(`fondo${(this.nivel - 1) % 4 + 1}`); // Asegura fondo inicial correcto
+      this.rompetuti.setPosition(this.scale.width / 2, this.scale.height * 0.10); // Reposiciona a Rompetuti
+
+
+      // Ocultar botones de Game Over si existieran
+      if (this.restartButton) this.restartButton.setVisible(false);
+      if (this.exitButton) this.exitButton.setVisible(false);
+
+      // Reanudar la escena si estaba pausada (importante si se pausó por rotación)
+      if (this.scene.isPaused('default')) {
+           this.scene.resume('default');
       }
     });
 
-    this.scale.on('resize', ({width:w, height:h}) => {
-      this.cameras.resize(w,h);
-      this.pantallaInicio.setDisplaySize(w,h);
-      this.pantallaGameOver.setDisplaySize(w,h);
-      this.fondo.setDisplaySize(w,h);
-      this.cacoText.setPosition(10,10);
-      this.banioText.setPosition(w-10,10);
-      this.startButton.setPosition(w/2,h-80);
-      if (this.restartButton) this.restartButton.setPosition(w/2-100,h-80);
-      if (this.exitButton)    this.exitButton.setPosition(w/2+100,h-80);
-      this.rompetuti.setPosition(Phaser.Math.Clamp(this.rompetuti.x, this.rompetuti.displayWidth/2, w-this.rompetuti.displayWidth/2), 200);
-      this.rompetuti.setDisplaySize(w*0.1, h*0.2);
-      this.inodoro.setPosition(Phaser.Math.Clamp(this.inodoro.x, this.inodoro.displayWidth/2, w-this.inodoro.displayWidth/2), h-60);
-      this.inodoro.setDisplaySize(w*0.2, h*0.2);
-      this.graphics.clear();
+    // --- Manejo de Redimensionamiento ---
+    this.scale.on('resize', (gameSize) => {
+        // No es necesario llamar a checkOrientation aquí si ya lo hace el listener global 'resize'
+        // checkOrientation();
+        const isLandscape = gameSize.width > gameSize.height;
+        const w = gameSize.width;
+        const h = gameSize.height;
+
+        // Redimensionar elementos de pantalla completa
+        if (this.pantallaInicio) this.pantallaInicio.setDisplaySize(w, h);
+        if (this.pantallaGameOver) this.pantallaGameOver.setDisplaySize(w, h).setPosition(0,0); // Asegurar posición
+
+        // Redimensionar elementos del juego
+        if (this.fondo) this.fondo.setDisplaySize(w, h);
+        if (this.banioText) this.banioText.setPosition(w - 10, 10).setOrigin(1,0);
+        if (this.cacoText) this.cacoText.setPosition(10, 10);
+        if (this.nivelText) this.nivelText.setPosition(w / 2, 10).setOrigin(0.5, 0);
+
+        // Reposicionar Inodoro (clamp a nuevos límites)
+        if (this.inodoro) {
+            this.inodoro.setPosition(
+                Phaser.Math.Clamp(this.inodoro.x, this.inodoro.displayWidth/2, w - this.inodoro.displayWidth/2),
+                h - 60 // Mantener altura relativa al fondo
+            );
+        }
+        // Reposicionar Rompetuti (clamp X, Y fija al 10%)
+        if (this.rompetuti) {
+            const newY = h * 0.10; // <<-- POSICIÓN Y ROMPETUTI EN RESIZE
+            this.rompetuti.setPosition(
+                Phaser.Math.Clamp(this.rompetuti.x, this.rompetuti.displayWidth/2, w - this.rompetuti.displayWidth/2),
+                newY
+            );
+        }
+        // Reposicionar botones (si son visibles)
+        if (this.startButton && this.pantallaInicio.visible) this.startButton.setPosition(w/2, h - 80);
+        if (this.restartButton && this.pantallaGameOver.visible) this.restartButton.setPosition(w/2 - 150, h - 80); // Ajustar espaciado
+        if (this.exitButton && this.pantallaGameOver.visible) this.exitButton.setPosition(w/2 + 150, h - 80); // Ajustar espaciado
+
+        // Redibujar barras de progreso
+        if(this.graphics && isLandscape) { // Solo dibujar si está en landscape
+           this.redrawProgressBars();
+        } else if (this.graphics) {
+            this.graphics.clear(); // Borrar si no es landscape
+        }
     });
+
+    // --- Manejo Táctil / Mouse ---
+    this.input.on('pointermove', (pointer) => {
+        if (this.jugando && !this.gameOver && pointer.isDown) { // Mover solo si está presionado
+            const inodoroWidth = this.inodoro.displayWidth;
+            // Mover el centro del inodoro a la posición X del puntero
+            this.inodoro.x = Phaser.Math.Clamp(pointer.x, inodoroWidth / 2, this.scale.width - inodoroWidth / 2);
+        }
+    });
+     this.input.on('pointerdown', (pointer) => {
+         if (this.jugando && !this.gameOver) {
+             const inodoroWidth = this.inodoro.displayWidth;
+             // Mover inmediatamente al tocar/hacer clic
+             this.inodoro.x = Phaser.Math.Clamp(pointer.x, inodoroWidth / 2, this.scale.width - inodoroWidth / 2);
+         }
+     });
+
+     // Crear botones de Game Over (inicialmente invisibles)
+     this.restartButton = this.add.text(this.scale.width/2 - 150, this.scale.height - 80, 'VOLVER A EMPEZAR',
+            { fontSize: '28px', fill: '#fff', backgroundColor: '#000', padding:{x:10,y:5} })
+            .setOrigin(0.5).setDepth(11).setInteractive({ useHandCursor: true }).setVisible(false);
+     this.restartButton.on('pointerdown', () => window.location.reload()); // Recarga la página
+
+     this.exitButton = this.add.text(this.scale.width/2 + 150, this.scale.height - 80, 'SALIR',
+             { fontSize: '28px', fill: '#fff', backgroundColor: '#000', padding:{x:10,y:5} })
+             .setOrigin(0.5).setDepth(11).setInteractive({ useHandCursor: true }).setVisible(false);
+     this.exitButton.on('pointerdown', () => window.location.reload()); // Recarga la página (simple salir)
+
+
+     // Dibujar barras por primera vez
+     this.redrawProgressBars();
+
+  } // Fin de create
+
+  // Función auxiliar para dibujar/redibujar barras de progreso
+  this.redrawProgressBars = function() {
+      if (!this.graphics || !this.scale) return; // Asegurarse que existen
+      const w = this.scale.width;
+      const barWidth = Math.min(200, w * 0.2); // Ancho de barra relativo, máx 200
+      const barHeight = 20;
+      const barY = 35; // Posición Y de las barras
+      const cacoX = 10;
+      const banioX = w - barWidth - 10;
+
+      this.graphics.clear();
+      // Barra Cacometro
+      this.graphics.lineStyle(2, 0x000000).strokeRect(cacoX, barY, barWidth, barHeight);
+      this.graphics.fillStyle(0x00ff00, 1).fillRect(cacoX + 2, barY + 2, Math.min(barWidth - 4, (barWidth - 4) * (this.cacometro / 100)), barHeight - 4);
+      // Barra Baño
+      this.graphics.lineStyle(2, 0x000000).strokeRect(banioX, barY, barWidth, barHeight);
+      let fillWidthBanio = Math.min(barWidth - 4, (barWidth - 4) * (this.banio / 100));
+      this.graphics.fillStyle(0x8B4513, 1).fillRect(banioX + barWidth - 2 - fillWidthBanio, barY + 2, fillWidthBanio, barHeight - 4); // Rellenar de derecha a izquierda
   }
+
 
   function update(time, delta) {
-    if (!this.jugando || this.gameOver) return;
-    const cursors = this.input.keyboard.createCursorKeys();
-    const w = this.scale.width, inW = this.inodoro.displayWidth, speed=8+this.nivel;
-    if (cursors.left.isDown)  this.inodoro.x = Phaser.Math.Clamp(this.inodoro.x-speed, inW/2, w-inW/2);
-    if (cursors.right.isDown) this.inodoro.x = Phaser.Math.Clamp(this.inodoro.x+speed, inW/2, w-inW/2);
+    if (!this.jugando || this.gameOver || !checkOrientation()) { // Pausar si no se está jugando, hay game over o está en portrait
+        // Detener movimiento si el juego está pausado
+        if(this.rompetuti && this.rompetuti.body) this.rompetuti.body.stop();
+        // Puedes agregar lógica adicional de pausa aquí si es necesario
+        return;
+    }
 
-    if (this.rompetuti.vx===undefined) this.rompetuti.vx=6*(Math.random()<0.5?-1:1);
-    this.rompetuti.x += this.rompetuti.vx;
-    const margin=100, rW=this.rompetuti.displayWidth;
-    if (this.rompetuti.x < margin+rW/2||this.rompetuti.x> w-margin-rW/2) {
-      this.rompetuti.vx*=-1;
-      this.rompetuti.x=Phaser.Math.Clamp(this.rompetuti.x,margin+rW/2,w-margin-rW/2);
+    const deltaFactor = delta / 16.67; // Factor de normalización (asume 60FPS ideal)
+
+    // --- Movimiento Inodoro (Teclado) ---
+    const keyboardSpeed = this.scale.width * 0.015 * deltaFactor; // Velocidad relativa y normalizada
+    const cursors = this.input.keyboard.createCursorKeys();
+    const inodoroWidth = this.inodoro.displayWidth;
+    if (cursors.left.isDown)  this.inodoro.x = Phaser.Math.Clamp(this.inodoro.x - keyboardSpeed, inodoroWidth / 2, this.scale.width - inodoroWidth / 2);
+    if (cursors.right.isDown) this.inodoro.x = Phaser.Math.Clamp(this.inodoro.x + keyboardSpeed, inodoroWidth / 2, this.scale.width - inodoroWidth / 2);
+
+    // --- Movimiento Rompetuti ---
+    // Inicializar velocidad si es la primera vez
+    if (this.rompetuti.vx === 0) { // Se inicializó a 0 en create
+         const baseSpeedX = this.scale.width * 0.008; // <<-- VELOCIDAD HORIZONTAL BASE
+         this.rompetuti.vx = baseSpeedX * (Math.random() < 0.5 ? -1 : 1);
     }
-    this.dirTimer+=delta;
-    if (this.dirTimer>1500) {this.dirTimer=0;const nv=Phaser.Math.Between(4,6+this.nivel);this.rompetuti.vx=(Math.random()<0.5?-nv:nv);}    
-    this.timer+=delta;
-    const rate=Math.max(160,1000-this.nivel*80);
-    if (this.timer>rate) {
-      this.timer=0;
-      const p=this.add.rectangle(this.rompetuti.x,this.rompetuti.y+this.rompetuti.displayHeight/2+10,10,20,0x8B4513).setDepth(1);
-      this.pinturas.push(p);
-      if (this.sonidoPintura) this.sonidoPintura.play();
+
+    // Aplicar movimiento horizontal normalizado
+    this.rompetuti.x += this.rompetuti.vx * deltaFactor; // <<-- APLICAR VELOCIDAD NORMALIZADA
+
+    // Rebotar en los bordes (con margen)
+    const margin = this.rompetuti.displayWidth * 0.5; // Margen basado en el ancho
+    const leftBound = margin;
+    const rightBound = this.scale.width - margin;
+
+    if (this.rompetuti.x < leftBound) {
+        this.rompetuti.vx = Math.abs(this.rompetuti.vx); // Asegurar dirección positiva
+        this.rompetuti.x = leftBound;
+    } else if (this.rompetuti.x > rightBound) {
+        this.rompetuti.vx = -Math.abs(this.rompetuti.vx); // Asegurar dirección negativa
+        this.rompetuti.x = rightBound;
     }
-    const fall=6+this.nivel;
-    for (let i=this.pinturas.length-1;i>=0;i--) {
-      const p=this.pinturas[i];p.y+=fall;
-      if (Phaser.Geom.Intersects.RectangleToRectangle(p.getBounds(),this.inodoro.getBounds())) {
-        p.destroy();this.pinturas.splice(i,1);this.cacometro=Math.min(100,this.cacometro+10);this.puntaje+=10;
-      } else if (p.y>this.scale.height+20) {
-        this.manchas.push(this.add.circle(p.x,this.scale.height-10,6,0x8B4513).setDepth(0));
-        this.banio=Math.min(100,this.banio+10);p.destroy();this.pinturas.splice(i,1);
-      }
+
+    // Cambio de dirección y velocidad periódico
+    this.dirTimer += delta;
+    if (this.dirTimer > 2000) { // Tiempo entre cambios (ajustable)
+      this.dirTimer = 0;
+      const baseSpeedX = this.scale.width * 0.008; // Velocidad base
+      const speedIncrementX = this.scale.width * 0.0005; // Incremento por nivel <<-- AJUSTE VELOCIDAD NIVEL
+      let currentSpeedMagnitude = baseSpeedX + (this.nivel * speedIncrementX);
+      // Cambiar dirección aleatoriamente, mantener o aumentar ligeramente la velocidad
+      this.rompetuti.vx = (Math.random() < 0.5 ? -1 : 1) * currentSpeedMagnitude * (Phaser.Math.FloatBetween(0.95, 1.05)); // Pequeña variación
     }
-    if (this.cacometro>=100) {this.cacometro=0;this.nivel++;this.fondo.setTexture(`fondo${(this.nivel-1)%4+1}`);if (this.sonidoNivel) this.sonidoNivel.play();}
-    this.graphics.clear();
-    this.graphics.lineStyle(2,0x000000).strokeRect(10,30,200,20);
-    this.graphics.fillStyle(0x00ff00,1).fillRect(12,32,Math.min(196,1.96*this.cacometro),16);
-    this.graphics.lineStyle(2,0x000000).strokeRect(w-210,30,200,20);
-    const fw=Math.min(196,1.96*this.banio);
-    this.graphics.fillStyle(0x8B4513,1).fillRect(w-12-fw,32,fw,16);
-    if (this.banio>=100&&!this.gameOver) {
-      this.gameOver=true;this.jugando=false; if (this.sonidoGameOver) this.sonidoGameOver.play(); if (window.musicaIntro&&window.musicaIntro.isPlaying) window.musicaIntro.stop();
-      this.pantallaGameOver.setVisible(true).setDisplaySize(w,this.scale.height);
-      const h2=this.scale.height;
-      if (!this.restartButton) {
-        this.restartButton=this.add.text(w/2-100,h2-80,'VOLVER A EMPEZAR',{fontSize:'28px',fill:'#fff',backgroundColor:'#000',padding:{x:10,y:5}})
-          .setOrigin(0.5).setDepth(11).setInteractive().on('pointerdown',()=>location.reload());
-      } else this.restartButton.setPosition(w/2-100,h2-80).setVisible(true);
-      if (!this.exitButton) {
-        this.exitButton=this.add.text(w/2+100,h2-80,'SALIR',{fontSize:'28px',fill:'#fff',backgroundColor:'#000',padding:{x:10,y:5}})
-          .setOrigin(0.5).setDepth(11).setInteractive().on('pointerdown',()=>location.reload());
-      } else this.exitButton.setPosition(w/2+100,h2-80).setVisible(true);
+
+    // --- Generación y Caída de Pintura ---
+    this.timer += delta;
+    const spawnRate = Math.max(150, 900 - this.nivel * 50); // <<-- AJUSTE SPAWN RATE (más rápido con nivel)
+    if (this.timer > spawnRate) {
+      this.timer = 0;
+      // Crear pintura justo debajo de rompetuti
+      let pinta = this.add.rectangle(
+          this.rompetuti.x,
+          this.rompetuti.y + this.rompetuti.displayHeight / 2 + 5, // Debajo del sprite
+          10, 20, 0x8B4513).setDepth(1);
+      this.pinturas.push(pinta);
+      if (this.sonidoPintura && !this.sonidoPintura.isPlaying) this.sonidoPintura.play(); // Evitar solapamiento excesivo
     }
+
+    // Mover y comprobar colisiones de pinturas
+    const baseFallSpeed = this.scale.height * 0.006; // <<-- VELOCIDAD CAÍDA BASE
+    const fallSpeedIncrement = this.scale.height * 0.0007; // <<-- INCREMENTO CAÍDA POR NIVEL
+    const fallSpeed = (baseFallSpeed + this.nivel * fallSpeedIncrement); // Velocidad base + incremento por nivel
+
+    for (let i = this.pinturas.length - 1; i >= 0; i--) {
+        let p = this.pinturas[i];
+        if (!p) continue; // Seguridad por si se destruyó
+
+        p.y += fallSpeed * deltaFactor; // <<-- APLICAR VELOCIDAD CAÍDA NORMALIZADA
+
+        // Colisión con inodoro
+        if (Phaser.Geom.Intersects.RectangleToRectangle(p.getBounds(), this.inodoro.getBounds())) {
+            p.destroy();
+            this.pinturas.splice(i, 1);
+            this.cacometro = Math.min(100, this.cacometro + 10); // Incremento cacometro
+            this.puntaje += 10;
+            this.redrawProgressBars(); // Actualizar barra
+        }
+        // Colisión con suelo (generar mancha)
+        else if (p.y > this.scale.height) { // Si sobrepasa la altura
+             this.manchas.push(this.add.circle(p.x, this.scale.height - 10, 6, 0x8B4513).setDepth(0)); // Añadir mancha visual
+            this.banio = Math.min(100, this.banio + 5); // Incremento baño (quizás menos que cacometro?)
+            p.destroy();
+            this.pinturas.splice(i, 1);
+            this.redrawProgressBars(); // Actualizar barra
+            // Limitar número de manchas para evitar lag
+            if (this.manchas.length > 50) {
+                this.manchas[0].destroy();
+                this.manchas.shift();
+            }
+        }
+    }
+
+    // --- Subir Nivel ---
+    if (this.cacometro >= 100) {
+      this.cacometro = 0; // Reiniciar cacometro
+      this.nivel++;
+      this.nivelText.setText(`NIVEL: ${this.nivel}`); // Actualizar texto Nivel
+      // Cambiar fondo (cíclico 1-4)
+      this.fondo.setTexture(`fondo${(this.nivel - 1) % 4 + 1}`);
+      if (this.sonidoNivel) this.sonidoNivel.play();
+      // Podrías añadir un pequeño boost o cambio temporal aquí si quieres
+      this.redrawProgressBars(); // Asegurar que la barra se vacía visualmente
+    }
+
+    // --- Game Over ---
+    if (this.banio >= 100 && !this.gameOver) {
+      this.gameOver = true;
+      this.jugando = false;
+      window.jugando = false; // Actualiza global
+      if (this.sonidoGameOver) this.sonidoGameOver.play();
+      // Detener música intro si suena (aunque no debería en este punto)
+      if (window.musicaIntro && window.musicaIntro.isPlaying) window.musicaIntro.stop();
+
+      // Mostrar pantalla Game Over
+      this.pantallaGameOver.setVisible(true).setDepth(10); // Asegurar encima
+      this.pantallaGameOver.setDisplaySize(this.scale.width, this.scale.height); // Reajustar tamaño por si acaso
+
+      // Mostrar botones de Reinicio y Salir
+      this.restartButton.setPosition(this.scale.width/2 - 150, this.scale.height - 80).setVisible(true).setDepth(11);
+      this.exitButton.setPosition(this.scale.width/2 + 150, this.scale.height - 80).setVisible(true).setDepth(11);
+
+      // Detener movimiento de Rompetuti y pinturas
+      this.rompetuti.vx = 0;
+      // Podrías querer destruir las pinturas restantes o simplemente dejar de actualizarlas
+      // this.pinturas.forEach(p => p.destroy());
+      // this.pinturas = [];
+    }
+  } // Fin de update
+
+  // --- Inicialización y listeners globales ---
+  if (checkOrientation()) {
+       // initializeGame ya se llama dentro de checkOrientation si game es null
   }
 
-  if (checkOrientation()) initializeGame();
-  window.addEventListener('resize', checkOrientation);
-  if (window.screen.orientation) window.screen.orientation.addEventListener('change', checkOrientation);
-  else window.addEventListener('orientationchange', checkOrientation);
-};
+  // Listener global de redimensionamiento
+  window.addEventListener('resize', () => {
+      checkOrientation(); // Verifica orientación y llama a resize de Phaser si es necesario
+      // El `game.scale.on('resize', ...)` dentro de create se encargará del redimensionamiento de elementos
+  });
+
+  // Listeners de cambio de orientación
+  if (window.screen.orientation) {
+      window.screen.orientation.addEventListener('change', checkOrientation);
+  } else {
+      // Fallback para navegadores más antiguos
+      window.addEventListener('orientationchange', checkOrientation);
+  }
+
+   // Oculta el botón de fullscreen si la API no es soportada al inicio
+   if (fullscreenButton && !(document.fullscreenEnabled || document.webkitFullscreenEnabled || document.mozFullScreenEnabled || document.msFullscreenEnabled)) {
+       fullscreenButton.style.display = 'none';
+       console.log("API Fullscreen no soportada.");
+   }
+
+
+}; // Fin de window.onload
 </script>
 </body>
 </html>
