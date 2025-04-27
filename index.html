@@ -10,7 +10,8 @@
     canvas { display: block; }
     #rotate-device-message {
       display: none;
-      position: fixed; top: 0; left: 0;
+      position: fixed;
+      top: 0; left: 0;
       width: 100%; height: 100%;
       background: rgba(0,0,0,0.9);
       color: #fff; z-index: 9999;
@@ -31,168 +32,149 @@
 <body>
   <div id="rotate-device-message">Por favor, rota tu dispositivo a modo horizontal para jugar.</div>
   <button id="fullscreen-button">Pantalla Completa</button>
-<script>
-window.onload = () => {
-  const ROMPETUTI_Y_RATIO = 0.1; // Ajusta esta constante para modificar la altura de rompetuti en un solo lugar
-  const rotateMessage = document.getElementById('rotate-device-message');
-  const fsBtn = document.getElementById('fullscreen-button');
-  let game = null;
+  <script>
+  window.onload = () => {
+    // Ajuste de posición Y de rompetuti en todo el juego (10% del alto)
+    const ROMPETUTI_Y_RATIO = 0.1;
 
-  fsBtn.addEventListener('click', () => {
-    if (game && !game.scale.isFullscreen) game.scale.startFullscreen();
-    fsBtn.style.display = 'none';
-  });
+    const rotateMessage = document.getElementById('rotate-device-message');
+    const fsBtn = document.getElementById('fullscreen-button');
+    let game = null;
 
-  function checkOrientation() {
-    const isPortrait = window.matchMedia("(orientation: portrait)").matches;
-    if (isPortrait) {
-      rotateMessage.style.display = 'block';
+    fsBtn.addEventListener('click', () => {
+      if (game && !game.scale.isFullscreen) game.scale.startFullscreen();
       fsBtn.style.display = 'none';
-      if (game && game.isBooted) {
-        if (game.scene.isActive('default')) game.scene.pause('default');
-        if (window.musicaIntro && window.musicaIntro.isPlaying) window.musicaIntro.stop();
-      }
-      return false;
-    } else {
-      rotateMessage.style.display = 'none';
-      if (game && game.isBooted) {
-        if (game.scene.isPaused('default')) game.scene.resume('default');
-        if (!window.jugando && window.pantallaInicio && window.pantallaInicio.visible &&
-            window.musicaIntro && !window.musicaIntro.isPlaying) window.musicaIntro.play();
-        fsBtn.style.display = 'block';
-      } else if (!game) initializeGame();
-      return true;
-    }
-  }
-
-  function initializeGame() {
-    if (game) return;
-    const config = {
-      type: Phaser.AUTO,
-      backgroundColor: '#000',
-      scale: {
-        mode: Phaser.Scale.RESIZE,
-        autoCenter: Phaser.Scale.CENTER_BOTH,
-        width: window.innerWidth,
-        height: window.innerHeight
-      },
-      input: { activePointers: 1 },
-      scene: { init, preload, create, update }
-    };
-    game = new Phaser.Game(config);
-    window.game = game;
-  }
-
-  function init() {
-    this.pantallaInicio = this.pantallaGameOver = this.fondo = this.rompetuti = this.inodoro = null;
-    this.startButton = this.restartButton = this.exitButton = null;
-    this.pinturas = [];
-    this.manchas = [];
-    this.cacometro = 0;
-    this.banio = 0;
-    this.nivel = 1;
-    this.puntaje = 0;
-    this.timer = 0;
-    this.dirTimer = 0;
-    this.jugando = false;
-    this.gameOver = false;
-    this.sonidoPintura = this.sonidoNivel = this.sonidoGameOver = this.graphics = this.cacoText = this.banioText = null;
-    window.musicaIntro = null;
-    window.jugando = false;
-    window.pantallaInicio = null;
-  }
-
-  function preload() {
-    for (let i = 1; i <= 4; i++) this.load.image(`fondo${i}`, `assets/fondo${i}.jpg`);
-    this.load.image('pantallaInicio', 'assets/pantalla_inicio.jpg');
-    this.load.image('pantallaGameOver', 'assets/pantalla_gameover.jpg');
-    this.load.image('rompetuti', 'assets/rompetuti.png');
-    this.load.image('rompetuti2', 'assets/rompetuti2.png');
-    this.load.image('inodoro', 'assets/inodoro.png');
-    this.load.audio('pintura', 'assets/pintura.mp3');
-    this.load.audio('nivel', 'assets/nivel.mp3');
-    this.load.audio('perdiste', 'assets/perdiste.mp3');
-    this.load.audio('intro', 'assets/intro.mp3');
-  }
-
-  function create() {
-    window.musicaIntro = this.sound.add('intro', { loop: true, volume: 0.5 });
-    if (checkOrientation() && !window.musicaIntro.isPlaying) window.musicaIntro.play();
-
-    this.pantallaInicio = this.add.image(0, 0, 'pantallaInicio')
-      .setOrigin(0).setDepth(10)
-      .setDisplaySize(this.scale.width, this.scale.height);
-    window.pantallaInicio = this.pantallaInicio;
-
-    this.pantallaGameOver = this.add.image(0, 0, 'pantallaGameOver')
-      .setOrigin(0).setDepth(10)
-      .setDisplaySize(this.scale.width, this.scale.height)
-      .setVisible(false);
-
-    this.fondo = this.add.image(0, 0, 'fondo1')
-      .setOrigin(0).setDepth(0)
-      .setDisplaySize(this.scale.width, this.scale.height);
-
-    const rompetutiY = this.scale.height * ROMPETUTI_Y_RATIO;
-    this.rompetuti = this.add.sprite(
-      this.scale.width / 2,
-      rompetutiY,
-      'rompetuti'
-    )
-      .setDepth(1)
-      .setDisplaySize(this.scale.width * 0.1, this.scale.height * 0.2);
-
-    this.inodoro = this.add.sprite(
-      this.scale.width / 2,
-      this.scale.height - 60,
-      'inodoro'
-    )
-      .setDepth(1)
-      .setDisplaySize(this.scale.width * 0.2, this.scale.height * 0.2);
-
-    this.sonidoPintura = this.sound.add('pintura');
-    this.sonidoNivel = this.sound.add('nivel');
-    this.sonidoGameOver = this.sound.add('perdiste');
-
-    this.graphics = this.add.graphics().setDepth(2);
-    this.cacoText = this.add.text(10, 10, 'CACÓMETRO', { fontSize: '20px', fill: '#fff' }).setDepth(2);
-    this.banioText = this.add.text(this.scale.width - 10, 10, 'BAÑO EXPLOTADO', { fontSize: '20px', fill: '#fff' })
-      .setOrigin(1, 0).setDepth(2);
-
-    this.startButton = this.add.text(
-      this.scale.width / 2,
-      this.scale.height - 80,
-      'COMENZAR',
-      { fontSize: '32px', fill: '#fff', backgroundColor: '#000', padding: { x: 10, y: 5 }}
-    )
-      .setOrigin(0.5).setDepth(11)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => {
-        if (!checkOrientation()) return;
-        this.pantallaInicio.disableInteractive();
-        this.pantallaInicio.setVisible(false);
-        this.startButton.setVisible(false);
-        if (window.musicaIntro.isPlaying) window.musicaIntro.stop();
-        this.jugando = window.jugando = true;
-        if (this.scene.isPaused()) this.scene.resume();
-      });
-
-    this.input.on('pointermove', pointer => {
-      if (this.jugando && !this.gameOver && pointer.isDown) {
-        const w = this.scale.width;
-        const iw = this.inodoro.displayWidth;
-        this.inodoro.x = Phaser.Math.Clamp(pointer.x, iw / 2, w - iw / 2);
-      }
     });
 
-    this.scale.on('resize', ({ width: w, height: h }) => {
-      this.cameras.resize(w, h);
-      this.pantallaInicio.setDisplaySize(w, h);
-      this.pantallaGameOver.setDisplaySize(w, h);
-      this.fondo.setDisplaySize(w, h);
+    function checkOrientation() {
+      const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+      if (isPortrait) {
+        rotateMessage.style.display = 'block';
+        fsBtn.style.display = 'none';
+        if (game && game.isBooted) {
+          game.scene.pause('main');
+          if (window.musicaIntro && window.musicaIntro.isPlaying) window.musicaIntro.stop();
+        }
+        return false;
+      } else {
+        rotateMessage.style.display = 'none';
+        if (game && game.isBooted) {
+          game.scene.resume('main');
+          if (!window.jugando && window.pantallaInicio.visible && window.musicaIntro && !window.musicaIntro.isPlaying) {
+            window.musicaIntro.play();
+          }
+          fsBtn.style.display = 'block';
+        } else if (!game) {
+          initializeGame();
+        }
+        return true;
+      }
+    }
 
-      this.cacoText.setPosition(10, 10);
-      this.banioText.setPosition(w - 10, 10);
-      this.startButton.setPosition(w / 2, h - 80);
-      if (this.restartButton) this.restartButton.setPosition(w / 2 - 100, h - 80);
-      if (this.exitButton) this.exit<button id="fullscreen-button">Pantalla Completa</button>
+    function initializeGame() {
+      if (game) return;
+      const config = {
+        type: Phaser.AUTO,
+        backgroundColor: '#000000',
+        scale: {
+          mode: Phaser.Scale.RESIZE,
+          autoCenter: Phaser.Scale.CENTER_BOTH,
+          width: window.innerWidth,
+          height: window.innerHeight
+        },
+        input: { activePointers: 1 },
+        scene: {
+          key: 'main',
+          init, preload, create, update
+        }
+      };
+      game = new Phaser.Game(config);
+      window.game = game;
+    }
+
+    function init() {
+      this.pantallaInicio = null;
+      this.pantallaGameOver = null;
+      this.fondo = null;
+      this.rompetuti = null;
+      this.inodoro = null;
+      this.startButton = null;
+      this.restartButton = null;
+      this.exitButton = null;
+      this.pinturas = [];
+      this.manchas = [];
+      this.cacometro = 0;
+      this.banio = 0;
+      this.nivel = 1;
+      this.puntaje = 0;
+      this.timer = 0;
+      this.dirTimer = 0;
+      this.jugando = false;
+      this.gameOver = false;
+      this.sonidoPintura = null;
+      this.sonidoNivel = null;
+      this.sonidoGameOver = null;
+      this.graphics = null;
+      this.cacoText = null;
+      this.banioText = null;
+      window.musicaIntro = null;
+      window.jugando = false;
+      window.pantallaInicio = null;
+    }
+
+    function preload() {
+      for (let i = 1; i <= 4; i++) {
+        this.load.image(`fondo${i}`, `assets/fondo${i}.jpg`);
+      }
+      this.load.image('pantallaInicio', 'assets/pantalla_inicio.jpg');
+      this.load.image('pantallaGameOver', 'assets/pantalla_gameover.jpg');
+      this.load.image('rompetuti', 'assets/rompetuti.png');
+      this.load.image('rompetuti2', 'assets/rompetuti2.png');
+      this.load.image('inodoro', 'assets/inodoro.png');
+      this.load.audio('pintura', 'assets/pintura.mp3');
+      this.load.audio('nivel', 'assets/nivel.mp3');
+      this.load.audio('perdiste', 'assets/perdiste.mp3');
+      this.load.audio('intro', 'assets/intro.mp3');
+    }
+
+    function create() {
+      window.musicaIntro = this.sound.add('intro', { loop: true, volume: 0.5 });
+      if (checkOrientation() && !window.musicaIntro.isPlaying) window.musicaIntro.play();
+
+      this.pantallaInicio = this.add.image(0, 0, 'pantallaInicio')
+        .setOrigin(0).setDepth(10)
+        .setDisplaySize(this.scale.width, this.scale.height);
+      window.pantallaInicio = this.pantallaInicio;
+
+      this.pantallaGameOver = this.add.image(0, 0, 'pantallaGameOver')
+        .setOrigin(0).setDepth(10)
+        .setDisplaySize(this.scale.width, this.scale.height)
+        .setVisible(false);
+
+      this.fondo = this.add.image(0, 0, 'fondo1')
+        .setOrigin(0).setDepth(0)
+        .setDisplaySize(this.scale.width, this.scale.height);
+
+      const rompetutiY = this.scale.height * ROMPETUTI_Y_RATIO;
+      this.rompetuti = this.add.sprite(this.scale.width/2, rompetutiY, 'rompetuti')
+        .setDepth(1)
+        .setDisplaySize(this.scale.width*0.1, this.scale.height*0.2);
+
+      this.inodoro = this.add.sprite(this.scale.width/2, this.scale.height-60, 'inodoro')
+        .setDepth(1)
+        .setDisplaySize(this.scale.width*0.2, this.scale.height*0.2);
+
+      this.sonidoPintura = this.sound.add('pintura');
+      this.sonidoNivel   = this.sound.add('nivel');
+      this.sonidoGameOver= this.sound.add('perdiste');
+
+      this.graphics = this.add.graphics().setDepth(2);
+      this.cacoText = this.add.text(10,10,'CACÓMETRO',{fontSize:'20px',fill:'#fff'}).setDepth(2);
+      this.banioText= this.add.text(this.scale.width-10,10,'BAÑO EXPLOTADO',{fontSize:'20px',fill:'#fff'})
+        .setOrigin(1,0).setDepth(2);
+
+      this.startButton = this.add.text(this.scale.width/2, this.scale.height-80,'COMENZAR',{fontSize:'32px',fill:'#fff',backgroundColor:'#000',padding:{x:10,y:5}})
+        .setOrigin(0.5).setDepth(11)
+        .setInteractive({useHandCursor:true})
+        .on('pointerdown', ()=>{
+n
