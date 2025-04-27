@@ -19,12 +19,12 @@
       box-sizing: border-box; padding: 0 10px;
     }
     #fullscreen-button {
-      position: fixed; top:10px; right:10px; z-index:10000;
-      padding:8px 12px;
-      background:rgba(0,0,0,0.6);
-      color:#fff; border:1px solid #fff;
-      border-radius:5px; font-size:14px;
-      cursor:pointer; display:none;
+      position: fixed; top: 10px; right: 10px; z-index: 10000;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.6);
+      color: #fff; border: 1px solid #fff;
+      border-radius: 5px; font-size: 14px;
+      cursor: pointer; display: none;
     }
   </style>
 </head>
@@ -33,6 +33,7 @@
   <button id="fullscreen-button">Pantalla Completa</button>
 <script>
 window.onload = () => {
+  const ROMPETUTI_Y_RATIO = 0.1; // Ajusta esta constante para modificar la altura de rompetuti en un solo lugar
   const rotateMessage = document.getElementById('rotate-device-message');
   const fsBtn = document.getElementById('fullscreen-button');
   let game = null;
@@ -89,7 +90,7 @@ window.onload = () => {
     this.manchas = [];
     this.cacometro = 0;
     this.banio = 0;
-    this.nivel = 1; // Iniciar en 1 para que al subir al nivel 2 cambie el fondo correctamente
+    this.nivel = 1;
     this.puntaje = 0;
     this.timer = 0;
     this.dirTimer = 0;
@@ -132,12 +133,20 @@ window.onload = () => {
       .setOrigin(0).setDepth(0)
       .setDisplaySize(this.scale.width, this.scale.height);
 
-    const rompetutiY = this.scale.height * 0.1;
-    this.rompetuti = this.add.sprite(this.scale.width / 2, rompetutiY, 'rompetuti')
+    const rompetutiY = this.scale.height * ROMPETUTI_Y_RATIO;
+    this.rompetuti = this.add.sprite(
+      this.scale.width / 2,
+      rompetutiY,
+      'rompetuti'
+    )
       .setDepth(1)
       .setDisplaySize(this.scale.width * 0.1, this.scale.height * 0.2);
 
-    this.inodoro = this.add.sprite(this.scale.width / 2, this.scale.height - 60, 'inodoro')
+    this.inodoro = this.add.sprite(
+      this.scale.width / 2,
+      this.scale.height - 60,
+      'inodoro'
+    )
       .setDepth(1)
       .setDisplaySize(this.scale.width * 0.2, this.scale.height * 0.2);
 
@@ -150,9 +159,12 @@ window.onload = () => {
     this.banioText = this.add.text(this.scale.width - 10, 10, 'BAÑO EXPLOTADO', { fontSize: '20px', fill: '#fff' })
       .setOrigin(1, 0).setDepth(2);
 
-    this.startButton = this.add.text(this.scale.width / 2, this.scale.height - 80, 'COMENZAR', {
-        fontSize: '32px', fill: '#fff', backgroundColor: '#000', padding: { x: 10, y: 5 }
-      })
+    this.startButton = this.add.text(
+      this.scale.width / 2,
+      this.scale.height - 80,
+      'COMENZAR',
+      { fontSize: '32px', fill: '#fff', backgroundColor: '#000', padding: { x: 10, y: 5 }}
+    )
       .setOrigin(0.5).setDepth(11)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
@@ -183,92 +195,4 @@ window.onload = () => {
       this.banioText.setPosition(w - 10, 10);
       this.startButton.setPosition(w / 2, h - 80);
       if (this.restartButton) this.restartButton.setPosition(w / 2 - 100, h - 80);
-      if (this.exitButton) this.exitButton.setPosition(w / 2 + 100, h - 80);
-
-      const newY = h * 0.1;
-      this.rompetuti.setPosition(
-        Phaser.Math.Clamp(this.rompetuti.x, this.rompetuti.displayWidth / 2, w - this.rompetuti.displayWidth / 2),
-        newY
-      );
-      this.rompetuti.setDisplaySize(w * 0.1, h * 0.2);
-
-      this.inodoro.setPosition(
-        Phaser.Math.Clamp(this.inodoro.x, this.inodoro.displayWidth / 2, w - this.inodoro.displayWidth / 2),
-        h - 60
-      );
-      this.inodoro.setDisplaySize(w * 0.2, h * 0.2);
-
-      this.graphics.clear();
-    });
-  }
-
-  function update(time, delta) {
-    if (!this.jugando || this.gameOver) return;
-
-    const cursors = this.input.keyboard.createCursorKeys();
-    const w = this.scale.width;
-    const inW = this.inodoro.displayWidth;
-    const speed = 8 + this.nivel;
-
-    if (cursors.left.isDown) this.inodoro.x = Phaser.Math.Clamp(this.inodoro.x - speed, inW / 2, w - inW / 2);
-    if (cursors.right.isDown) this.inodoro.x = Phaser.Math.Clamp(this.inodoro.x + speed, inW / 2, w - inW / 2);
-
-    if (this.rompetuti.vx === undefined) {
-      this.rompetuti.vx = 6 * (Math.random() < 0.5 ? -1 : 1);
-    }
-    this.rompetuti.x += this.rompetuti.vx;
-    const margin = 100;
-    const rW = this.rompetuti.displayWidth;
-    if (this.rompetuti.x < margin + rW / 2 || this.rompetuti.x > w - margin - rW / 2) {
-      this.rompetuti.vx *= -1;
-      this.rompetuti.x = Phaser.Math.Clamp(this.rompetuti.x, margin + rW / 2, w - margin - rW / 2);
-    }
-
-    this.dirTimer += delta;
-    if (this.dirTimer > 1500) {
-      this.dirTimer = 0;
-      const nv = Phaser.Math.Between(4, 6 + this.nivel);
-      this.rompetuti.vx = Math.random() < 0.5 ? -nv : nv;
-    }
-
-    this.timer += delta;
-    const rate = Math.max(160, 1000 - this.nivel * 80);
-    if (this.timer > rate) {
-      this.timer = 0;
-      const p = this.add.rectangle(
-        this.rompetuti.x,
-        this.rompetuti.y + this.rompetuti.displayHeight / 2 + 10,
-        10, 20, 0x8B4513
-      ).setDepth(1);
-      this.pinturas.push(p);
-      if (this.sonidoPintura) this.sonidoPintura.play();
-    }
-
-    const fall = 6 + this.nivel;
-    for (let i = this.pinturas.length - 1; i >= 0; i--) {
-      const p = this.pinturas[i];
-      p.y += fall;
-      if (Phaser.Geom.Intersects.RectangleToRectangle(p.getBounds(), this.inodoro.getBounds())) {
-        p.destroy();
-        this.pinturas.splice(i, 1);
-        this.cacometro = Math.min(100, this.cacometro + 10);
-        this.puntaje += 10;
-      } else if (p.y > this.scale.height + 20) {
-        this.manchas.push(this.add.circle(p.x, this.scale.height - 10, 6, 0x8B4513).setDepth(0));
-        this.banio = Math.min(100, this.banio + 10);
-        p.destroy();
-        this.pinturas.splice(i, 1);
-      }
-    }
-
-    if (this.cacometro >= 100) {
-      this.cacometro = 0;
-      this.nivel++;
-      this.fondo.setTexture(`fondo${(this.nivel - 1) % 4 + 1}`);
-      if (this.sonidoNivel) this.sonidoNivel.play();
-    }
-
-    this.graphics.clear();
-    this.graphics.lineStyle(2, 0x000000).strokeRect(10, 30, 200, 20);
-    this.graphics.fillStyle(0x00ff00, 1).fillRect(12, 32, Math.min(196, 1.96 * this.cacometro), 16);
-    this.graphics.lineStyle
+      if (this.exitButton) this.exit<button id="fullscreen-button">Pantalla Completa</button>
