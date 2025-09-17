@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>¡Que no te vea Virginia! 2: World Warrior</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            touch-action: none;
+        }
+        canvas {
+            background-color: transparent;
+            display: block;
+            image-rendering: pixelated; /* Ensures sharp pixels */
+        }
+        .game-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .game-container {
+            width: 100%;
+            max-width: 800px;
+            margin: auto;
+            text-align: center;
+            position: relative;
+        }
+        #gameCanvas, #fightCanvas {
+             background-color: #333;
+             border: 4px solid #fff;
+             border-radius: 8px;
+             box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+            z-index: 100;
+        }
+        .modal-content {
+            background-color: #2a2a2a;
+            padding: 2rem 3rem;
+            border-radius: 10px;
+            border: 4px solid #fff;
+        }
+        .btn {
+            background-color: #4CAF50;
+            border: 2px solid #fff;
+            color: white;
+            padding: 15px 30px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 20px;
+            margin: 10px 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.2s;
+            text-shadow: 1px 1px 2px black;
+        }
+        .btn:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+        .btn-fight {
+             background-color: #c0392b;
+        }
+        .btn-fight:hover {
+            background-color: #e74c3c;
+        }
+
+        #virginia-speech {
+            position: absolute;
+            background-color: white;
+            color: black;
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px solid black;
+            max-width: 150px;
+            font-size: 10px;
+            line-height: 1.2;
+            z-index: 50;
+            pointer-events: none;
+        }
+        #virginia-speech::after {
+            content: '';
+            position: absolute;
+            bottom: -10px; left: 20px;
+            width: 0; height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 10px solid white;
+        }
+
+        /* Character Select Screen */
+        #character-select-screen {
+            background: linear-gradient(180deg, #0d1a26 0%, #294861 100%);
+            border: 4px solid #fff;
+            border-radius: 10px;
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 900px;
+            box-shadow: 0 0 30px rgba(66, 153, 225, 0.5);
+        }
+        #main-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            background-color: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        #character-portrait-canvas {
+            border: 4px solid #fbc02d;
+            border-radius: 8px;
+        }
+        #character-name {
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            color: #fbc02d;
+            text-shadow: 2px 2px 4px #000;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            margin-left: 2rem;
+        }
+        #selection-grid {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .selection-icon {
+            border: 4px solid #a0aec0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            background-color: #2d3748;
+        }
+        .selection-icon:hover, .selection-icon.active {
+            border-color: #fbc02d;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px #fbc02d;
+        }
+        
+        /* Fight UI */
+        #fight-ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: calc(100% - 20px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+        }
+        .fighter-info {
+            width: 40%;
+            text-align: left;
+        }
+        .fighter-info.right {
+            text-align: right;
+        }
+        .fighter-name {
+            font-size: 16px;
+            color: white;
+            text-shadow: 2px 2px #000;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        .health-bar-container {
+            width: 100%;
+            height: 30px;
+            border: 3px solid #2c3e50;
+            background-color: #c0392b;
+            padding: 2px;
+            border-radius: 4px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+        }
+        .health-bar-wrapper {
+             border: 2px solid black;
+        }
+        #player-health { background-color: #f1c40f; }
+        #virginia-health { background-color: #f1c40f; }
+        .health-bar {
+            height: 100%;
+            width: 100%;
+            transition: width 0.2s linear;
+        }
+        #timer { 
+            font-size: 40px; 
+            text-shadow: 2px 2px #000;
+            color: #f1c40f;
+            -webkit-text-stroke: 2px #c0392b;
+        }
+        #fight-overlay-text {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 80px;
+            color: #f1c40f;
+            text-shadow: 4px 4px 0 #c0392b, 8px 8px 0px #000;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            z-index: 110;
+        }
+        #rotate-device-screen {
+            display: none; /* Hidden by default */
+        }
+        @media (orientation: portrait) and (max-width: 768px) {
+            .game-wrapper:not(.fullscreen-active) #rotate-device-screen {
+                display: flex;
+            }
+            .game-wrapper.fullscreen-active > div:not(#rotate-device-screen) {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900">
+    <div id="game-wrapper" class="game-wrapper">
+        <div id="start-game-screen" class="modal">
+            <div class="modal-content text-center">
+                <h1 class="text-4xl text-yellow-400 mb-8">¡Bienvenido!</h1>
+                <button id="start-game-btn" class="btn">JUGAR</button>
+            </div>
+        </div>
+
+        <div id="mode-select-screen" class="modal hidden">
+             <div class="modal-content text-center">
+                <h1 class="text-4xl text-yellow-400 mb-8">¡Que no te vea Virginia!</h1>
+                <h2 class="text-2xl mb-6">Elige el modo de juego:</h2>
+                <button id="select-stealth-mode" class="btn">Modo Sigilo</button>
+                <button id="select-fight-mode" class="btn btn-fight">Modo Lucha</button>
+            </div>
+        </div>
+        
+        <div id="character-select-screen-container" class="hidden w-full max-w-5xl p-4">
+            <h1 class="text-3xl md:text-4xl mb-4 text-center text-yellow-400 tracking-wider">SELECT YOUR CHARACTER</h1>
+            <div id="character-select-screen">
+                <div id="main-display">
+                    <canvas id="character-portrait-canvas" width="256" height="256"></canvas>
+                    <div id="character-name-container">
+                        <h2 id="character-name">Lucas</h2>
+                    </div>
+                </div>
+                <div id="selection-grid">
+                    <canvas class="selection-icon" data-char="lucas" width="80" height="80"></canvas>
+                    <canvas class="selection-icon" data-char="julian" width="80" height="80"></canvas>
+                    <canvas class="selection-icon" data-char="diego" width="80" height="80"></canvas>
+                    <canvas class="selection-icon" data-char="kike" width="80" height="80"></canvas>
+                    <canvas class="selection-icon" data-char="mariano" width="80" height="80"></canvas>
+                    <canvas class="selection-icon" data-char="laura" width="80" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-container" class="game-container hidden">
+            <canvas id="gameCanvas"></canvas>
+            <div id="virginia-speech" class="hidden"></div>
+        </div>
+        
+        <div id="fight-container" class="game-container hidden">
+            <canvas id="fightCanvas" width="800" height="450"></canvas>
+            <div id="fight-ui">
+                <div class="fighter-info">
+                    <div id="player-name" class="fighter-name">Player</div>
+                    <div class="health-bar-container">
+                         <div class="health-bar-wrapper">
+                            <div id="player-health" class="health-bar"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="timer">99</div>
+                 <div class="fighter-info right">
+                    <div id="virginia-name" class="fighter-name">Virginia</div>
+                    <div class="health-bar-container">
+                         <div class="health-bar-wrapper">
+                            <div id="virginia-health" class="health-bar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="fight-overlay-text"></div>
+        </div>
+
+        <div id="game-over-screen" class="modal hidden">
+            <div class="modal-content">
+                <h1 id="game-over-title" class="text-5xl text-red-500 mb-4">GAME OVER</h1>
+                <p id="game-over-text" class="mb-6">¡Virginia te ha visto!</p>
+                <button id="restart-button" class="btn">Volver al Menú</button>
+            </div>
+        </div>
+        
+        <div id="win-screen" class="modal hidden">
+            <div class="modal-content">
+                <h1 id="win-title" class="text-5xl text-green-500 mb-4">¡VICTORIA!</h1>
+                <p id="win-text" class="mb-6">La notebook está a salvo.</p>
+                <button id="play-again-button" class="btn">Volver al Menú</button>
+            </div>
+        </div>
+
+         <div id="rotate-device-screen" class="modal">
+            <div class="modal-content text-center">
+                <h1 class="text-2xl text-yellow-400">Por favor, gira tu dispositivo</h1>
+            </div>
+        </div>
+    </div>
+
+<script>
+// --- GLOBAL STATE ---
+let currentMode = ''; // 'stealth' or 'fight'
+let animationFrameId;
+let activeKeys = {};
+let touchStartX = 0;
+let touchStartY = 0;
+
+// --- AUDIO SETUP ---
+const synth = new Tone.Synth().toDestination();
+const monoSynth = new Tone.MonoSynth({ oscillator: { type: "square" }, envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 } }).toDestination();
+const noiseSynth = new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.001, decay: 0.05, sustain: 0 } }).toDestination();
+noiseSynth.volume.value = -10;
+
+function playStartSound() {
+    if (Tone.context.state !== 'running') Tone.context.resume();
+    const now = Tone.now();
+    monoSynth.triggerAttackRelease("C4", "8n", now);
+    monoSynth.triggerAttackRelease("G4", "8n", now + 0.1);
+    monoSynth.triggerAttackRelease("C5", "8n", now + 0.2);
+}
+function playGameOverSound() {
+    const now = Tone.now();
+    synth.triggerAttackRelease("C4", "8n", now);
+    synth.triggerAttackRelease("G3", "8n", now + 0.1);
+    synth.triggerAttackRelease("E3", "8n", now + 0.2);
+    synth.triggerAttackRelease("C3", "4n", now + 0.3);
+}
+function playWinSound() {
+    const now = Tone.now();
+    monoSynth.triggerAttackRelease("C5", "8n", now);
+    monoSynth.triggerAttackRelease("E5", "8n", now + 0.1);
+    monoSynth.triggerAttackRelease("G5", "8n", now + 0.2);
+    monoSynth.triggerAttackRelease("C6", "8n", now + 0.3);
+}
+function playPunchSound() { noiseSynth.triggerAttackRelease("0.1"); }
+function playHitSound() { synth.triggerAttackRelease("E2", "16n"); }
+
+// --- DOM ELEMENTS ---
+const gameWrapper = document.getElementById('game-wrapper');
+const startGameScreen = document.getElementById('start-game-screen');
+const modeSelectScreen = document.getElementById('mode-select-screen');
+const characterSelectScreen = document.getElementById('character-select-screen-container');
+const gameOverScreen = document.getElementById('game-over-screen');
+const winScreen = document.getElementById('win-screen');
+const restartButton = document.getElementById('restart-button');
+const playAgainButton = document.getElementById('play-again-button');
+const fightOverlay = document.getElementById('fight-overlay-text');
+
+// --- PALETTE & ASSETS ---
+const _ = null; // transparent
+const PALETTE = {
+    skin: '#f5cba7', skinS: '#d3a17d', skinH: '#ffe0c8', hairBlack: '#222034', hairBlackH: '#444068',
+    hairBrown: '#854c30', hairBrownH: '#a96b4c', hairBrownS: '#6e4129', hairDarkBrown: '#4a2a0a', hairDarkBrownH: '#6d4c41',
+    hairDarkBrownS: '#3b2008', hairBlonde: '#ffda3b', hairBlondeS: '#e6b800', hairBlondeH: '#fff6c3', hairGrey: '#808080',
+    hairGreyH: '#a0a0a0', hairGreyS: '#606060', jBlue: '#3498db', jBlueS: '#2980b9', jBlueH: '#85c1e9', jWhite: '#ecf0f1',
+    jWhiteS: '#bdc3c7', shirtPink: '#f5b7b1', shirtPinkS: '#e59898', purple: '#8e44ad', purpleS: '#7d3c98',
+    pants: '#34495e', pantsS: '#2c3e50', pantsH: '#5d6d7e', red: '#e74c3c', redS: '#c0392b', pink: '#ff69b4',
+    pinkS: '#e05da0', white: '#ffffff', sunglasses: '#000000', notebook: '#d0d0d0', notebookS: '#a0a0a0', lace: '#fdf5e6',
+    bushL: '#55a633', bushD: '#2b610e', bushH: '#a3e488', pavement: '#8a8a8a', pavementS: '#7a7a7a', brick: '#b9502f',
+    brickS: '#8a3c23', door: '#5d4037', doorKnob: '#fbc02d', windowFrame: '#c7a985', windowGlass: '#81d4fa', windowGlassH: '#e1f5fe',
+    bgSky: '#54a0ff', bgSkyH: '#8ecae6', bgBuilding: '#adb5bd', bgBuildingS: '#6c757d', wood: '#a67c52', woodS: '#6f5038'
+};
+function C(color) { return PALETTE[color] || color; }
+
+function drawPixelArt(ctx, spriteData, x, y, width, height, flipped = false) {
+    if (!spriteData || spriteData.length === 0) return;
+    const rows = spriteData.length;
+    const cols = spriteData[0].length;
+    const pixelH = height / rows;
+    const pixelW = width / cols;
+    
+    ctx.save();
+    if (flipped) {
+        ctx.translate(x + width, y);
+        ctx.scale(-1, 1);
+        x = 0;
+        y = 0;
+    }
+    
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            if (spriteData[r][c]) {
+                ctx.fillStyle = spriteData[r][c];
+                ctx.fillRect(Math.floor(x + c * pixelW), Math.floor(y + r * pixelH), Math.ceil(pixelW), Math.ceil(pixelH));
+            }
+        }
+    }
+    ctx.restore();
+}
+
+const characterPortraits = {
+     lucas: [[_,_,_,C('skinH'),C('skinH'),C('skinH'),C('skinH'),C('skinH'),C('skinH'),C('skinH'),C('skinH'),_,_,_],[_,_,C('skinH'),C('skin'),C('skin'),C('skin'),C('skinS'),C('skinS'),C('skin'),C('skin'),C('skin'),C('skinH'),_,_],[_,C('hairBrownH'),C('skin'),C('sunglasses'),C('sunglasses'),C('sunglasses'),C('skinS'),C('skinS'),C('sunglasses'),C('sunglasses'),C('sunglasses'),C('skin'),C('hairBrownH'),_],[C('hairBrown'),C('hairBrownS'),C('skin'),C('sunglasses'),C('white'),C('sunglasses'),C('skinS'),C('skinS'),C('sunglasses'),C('white'),C('sunglasses'),C('skin'),C('hairBrownS'),C('hairBrown')],[C('hairBrown'),C('hairBrownS'),C('skin'),C('skinS'),C('skinS'),C('skinS'),C('skinS'),C('skinS'),C('skinS'),C('skinS'),C('skinS'),C('skin'),C('hairBrownS'),C('hairBrown')],[C('hairBrown'),C('hairBrownS'),C('hairBrown'),C('hairBrownS'),C('hairBrownS'),C('hairBrownS'),C('hairBrownS'),C('hairBrownS'),C('hairBrownS'),C('hairBrownS'),C('hairBrown'),C('hairBrownS'),C('hairBrown'),_],[_,_,C('hairBrown'),C('hairBrownS'),C('hairBrownS'),C('hairBrownS'),C('hairBrownS'),C('hairBrownS'),C('hairBrownS'),C('hairBrownS'),C('hairBrown'),_,_,_],[_,C('skinS'),C('shirtPinkS'),C('shirtPink'),C('shirtPink'),C('shirtPink'),C('shirtPinkS'),C('shirtPinkS'),C('shirtPink'),C('shirtPink'),C('shirtPink'),C('shirtPinkS'),C('skinS'),_],[_,C('skin'),C('shirtPink'),C('shirtPinkS'),C('shirtPink'),C('shirtPink'),C('shirtPinkS'),C('shirtPinkS'),C('shirtPink'),C('shirtPink'),C('shirtPinkS'),C('shirtPink'),C('skin'),_],[_,_,C('shirtPinkS'),C('shirtPink'),C('shirtPinkS'),C('shirtPink'),C('shirtPinkS'),C('shirtPinkS'),C('shirtPink'),C('shirtPinkS'),C('shirtPink'),C('shirtPinkS'),_,_],[_,_,C('shirtPink'),C('shirtPink'),C('shirtPink'),C('shirtPinkS'),C('shirtPinkS'),C('shirtPinkS'),C('shirtPinkS'),C('shirtPink'),C('shirtPink'),C('shirtPink'),_,_],[_,_,C('shirtPinkS'),C('shirtPink'),C('shirtPink'),C('shirtPink'),C('shirtPinkS'),C('shirtPinkS'),C('shirtPink'),C('shirtPink'),C('shirtPink'),C('shirtPinkS'),_,_]],
+    diego: [[_,_,C('hairBrownH'),C('hairBrown'),C('hairBrown'),C('hairBrownS'),C('hairBrownS'),C('hairBrown'),C('hairBrown'),C('hairBrownH'),_,_],[_,C('hairBrown'),C('hairBrown'),C('skinH'),C('skin'),C('hairBrownS'),C('hairBrownS'),C('skin'),C('skinH'),C('hairBrown'),C('hairBrown'),_],[C('hairBrown'),C('skin'),C('skin'),C('skin'),C('white'),C('hairBrownS'),C('hairBrownS'),C('white'),C('skin'),C('skin'),C('hairBrownS'),_],[C('hairBrown'),C('skin'),C('skinS'),C('skinS'),C('skinS'),C('skinS'),C('skinS'),C('skinS'),C('skinS'),C('skin'),C('hairBrownS'),_],[C('hairBrown'),C('skinS'),C('skin'),C('skinS'),C('skinS'),C('redS'),C('redS'),C('skinS'),C('skinS'),C('skin'),C('hairBrownS'),_],[_,C('purpleS'),C('purple'),C('purple'),C('purpleS'),C('purple'),C('purple'),C('purpleS'),C('purple'),C('purple'),C('purpleS'),_],[C('purpleS'),C('purple'),C('purple'),C('purpleS'),C('purple'),C('purple'),C('purpleS'),C('purple'),C('purple'),C('purple'),C('purpleS'),_],[C('purple'),C('purpleS'),C('purple'),C('purple'),C('purpleS'),C('purple'),C('purpleS'),C('purple'),C('purple'),C('purpleS'),C('purple'),_]],
+    virginia: [[_, C('hairBlondeH'), C('hairBlonde'), C('hairBlonde'), C('hairBlondeH'), C('hairBlondeH'), C('hairBlonde'), C('hairBlonde'), C('hairBlonde'), C('hairBlondeH'), _],[C('hairBlonde'), C('hairBlondeH'), C('skinH'), C('skin'), C('skin'), C('skin'), C('skin'), C('skin'), C('skinH'), C('hairBlonde'), C('hairBlondeS'), _],[C('hairBlondeS'), C('hairBlonde'), C('skin'), C('white'), C('hairBlondeS'), C('hairBlondeS'), C('white'), C('skinS'), C('skin'), C('hairBlonde'), C('hairBlondeS'), _],[C('hairBlonde'), C('skin'), C('skinS'), C('skinS'), C('skinS'), C('skinS'), C('skinS'), C('skinS'), C('skinS'), C('skinS'), C('hairBlonde'), _],[C('hairBlondeS'), C('skin'), C('skin'), C('skinS'), C('skinS'), C('redS'), C('redS'), C('skinS'), C('skinS'), C('skin'), C('hairBlonde'), _],[_, C('hairBlondeS'), C('skinS'), C('skin'), C('skinS'), C('skinS'), C('skinS'), C('skinS'), C('skin'), C('skinS'), C('hairBlondeS'), _],[_, C('pinkS'), C('pink'), C('pink'), C('pinkS'), C('pink'), C('pink'), C('pinkS'), C('pink'), C('pink'), C('pinkS'), _],[C('pinkS'), C('pink'), C('pink'), C('pinkS'), C('pink'), C('pink'), C('pinkS'), C('pink'), C('pink'), C('pink'), C('pinkS'), _],[C('pink'), C('pinkS'), C('pink'), C('pink'), C('pinkS'), C('pink'), C('pinkS'), C('pink'), C('pink'), C('pinkS'), C('pink'), _]],
+    julian: [[_,_,_,C('hairBlackH'),C('hairBlack'),C('hairBlackH'),C('hairBlack'),C('hairBlackH'),C('hairBlack'),_,_],[_,C('hairBlackH'),C('hairBlack'),C('skinH'),C('skin'),C('skin'),C('skin'),C('skinH'),C('hairBlack'),C('hairBlackH'),_],[C('hairBlack'),C('hairBlackH'),C('skin'),C('white'),C('skinS'),C('skinS'),C('white'),C('skin'),C('hairBlackH'),C('hairBlack'),_],[C('hairBlackH'),C('skin'),C('skinS'),C('skinS'),C('skin'),C('skinS'),C('skinS'),C('skinS'),C('skin'),C('hairBlackH'),_],[_,C('hairBlack'),C('skinS'),C('skin'),C('skinS'),C('redS'),C('redS'),C('skinS'),C('skin'),C('hairBlack'),_],[_,_,C('hairBlack'),C('hairBlackH'),C('hairBlack'),C('hairBlack'),C('hairBlackH'),C('hairBlack'),_,_],[_,C('hairBlackH'),C('hairBlack'),C('hairBlackH'),C('hairBlackH'),C('hairBlackH'),C('hairBlack'),C('hairBlackH'),_]],
+    kike: [[_,_,C('hairGreyH'),C('hairGrey'),C('hairGreyS'),C('hairGrey'),C('hairGreyH'),_],[_,C('hairGrey'),C('skinH'),C('skin'),C('skin'),C('skinS'),C('hairGrey'),_],[C('hairGrey'),C('skin'),C('white'),C('skinS'),C('white'),C('skin'),C('hairGreyS'),_],[C('hairGreyS'),C('skin'),C('skinS'),C('skinS'),C('skinS'),C('skin'),C('hairGrey'),_],[_,C('jWhiteS'),C('jWhite'),C('jWhiteS'),C('jWhite'),C('jWhiteS'),C('jWhite'),_],[_,C('jWhite'),C('jWhiteS'),C('jWhite'),C('jWhiteS'),C('jWhite'),C('jWhiteS'),C('jWhite'),_]],
+    mariano: [[_,C('hairBlondeH'),C('hairBlonde'),C('hairBlondeH'),C('hairBlonde'),C('hairBlondeH'),_],[C('hairBlonde'),C('hairBlondeS'),C('hairBlonde'),C('hairBlondeS'),C('hairBlonde'),C('hairBlondeS'),_],[_,C('sunglasses'),C('sunglasses'),C('sunglasses'),C('sunglasses'),C('sunglasses'),_],[_,C('skinH'),C('skin'),C('skinS'),C('skin'),C('skinH'),_],[_,C('skin'),C('skinS'),C('redS'),C('skinS'),C('skin'),_],[_,C('jBlue'),C('jBlueS'),C('jBlue'),C('jBlueS'),C('jBlue'),_],[_,C('jBlueS'),C('jBlue'),C('jBlueS'),C('jBlue'),C('jBlueS'),_]],
+    laura: [[_,_,C('hairDarkBrownH'),C('hairDarkBrown'),C('hairDarkBrownS'),C('hairDarkBrown'),C('hairDarkBrownH'),_],[_,C('hairDarkBrown'),C('skinH'),C('skin'),C('skin'),C('skinS'),C('hairDarkBrown'),_],[C('hairDarkBrown'),C('skin'),C('white'),C('skinS'),C('white'),C('skin'),C('hairDarkBrownS'),_],[C('hairDarkBrownS'),C('skin'),C('skinS'),C('skinS'),C('skinS'),C('skin'),C('hairDarkBrown'),_],[_,C('lace'),C('jWhiteS'),C('lace'),C('jWhiteS'),C('lace'),_],[_,C('jWhiteS'),C('lace'),C('jWhiteS'),C('lace'),C('jWhiteS'),_]]
+};
+const fightBackground = [[C('bgSkyH'), C('bgSky'), C('bgSky'), C('bgSkyH'), C('bgSky'), C('bgSky'), C('bgSky'), C('bgSkyH'), C('bgSky'), C('bgSky'), C('bgSkyH')],[C('bgSky'), _, _, _, _, C('bgBuilding'), C('bgBuildingS'), C('bgBuilding'), _, _, C('bgSky')],[C('bgSkyH'), _, _, _, _, C('bgBuildingS'),C('white'), C('bgBuildingS'), _, _, C('bgSkyH')],[C('bgSky'), _, _, _, _, C('bgBuilding'), C('bgBuildingS'), C('bgBuilding'), _, _, C('bgSky')],[C('bgSkyH'), _, _, _, _, C('bgBuildingS'),C('white'), C('bgBuildingS'), _, _, C('bgSkyH')],[C('woodS'), C('woodS'), C('woodS'), C('woodS'), C('woodS'), C('woodS'), C('woodS'), C('woodS'), C('woodS'), C('woodS'), C('woodS')],[C('wood'), C('woodS'), C('wood'), C('wood'), C('woodS'), C('wood'), C('wood'), C('woodS'), C('wood'), C('wood'), C('woodS')],[C('woodS'), C('wood'), C('woodS'), C('wood'), C('wood'), C('woodS'), C('woodS'), C('wood'), C('woodS'), C('woodS'), C('wood')]];
+const fightSprites = { 
+    lucas: {idle: [[_,_,_,C('skinH'),C('skinH'),C('skinH'),_,_],[_,_,C('skin'),C('skinS'),C('skinS'),C('skin'),_],[_,C('hairBrownS'),C('skin'),C('sunglasses'),C('sunglasses'),C('skin'),_],[_,C('hairBrown'),C('hairBrownS'),C('hairBrownS'),C('hairBrownS'),C('hairBrown'),_],[_,C('shirtPink'),C('shirtPinkS'),C('shirtPink'),C('shirtPinkS'),_],[C('shirtPinkS'),C('shirtPink'),C('shirtPink'),C('shirtPink'),C('shirtPinkS')],[_,C('shirtPink'),C('shirtPink'),C('shirtPinkS'),_,_],[_,C('pants'),C('pantsS'),C('pants'),_],[_,C('pantsS'),_,C('pantsS'),_]],punch: [[_,_,_,C('skinH'),C('skinH'),C('skinH'),_],[_,_,C('skin'),C('skinS'),C('skinS'),C('skin'),_],[_,C('hairBrownS'),C('skin'),C('sunglasses'),C('sunglasses'),C('skin'),C('shirtPinkS'),C('skinH'),_],[_,C('hairBrown'),C('hairBrownS'),C('hairBrownS'),C('shirtPink'),C('shirtPink'),C('skinS'),C('skin')],[_,C('shirtPink'),C('shirtPinkS'),C('shirtPink'),C('shirtPinkS'),_],[_,C('shirtPinkS'),C('shirtPink'),C('shirtPink'),_],[_,C('pants'),C('pantsS'),C('pants'),_],[_,C('pantsS'),_,C('pantsS'),_]],hit: [[_,_,_,C('skinH'),C('skinH'),C('skinS'),_],[_,_,C('skinS'),C('redS'),C('skinS'),C('skin'),_],[_,C('hairBrownS'),C('skin'),C('sunglasses'),C('sunglasses'),C('skinS'),_],[_,C('hairBrown'),C('hairBrownS'),C('hairBrownS'),C('hairBrown'),_],[_,C('shirtPinkS'),C('shirtPink'),C('shirtPinkS'),_],[C('shirtPink'),C('shirtPink'),C('shirtPinkS'),C('shirtPink')],[_,C('shirtPinkS'),C('shirtPink'),C('shirtPink'),_],[_,C('pantsS'),C('pants'),C('pantsS'),_],[_,C('pants'),_,C('pants'),_]]},
+    julian: {idle: [[_,C('hairBlackH'),C('hairBlack'),C('hairBlackH'),_],[C('hairBlack'),C('skinH'),C('skin'),C('hairBlack')],[C('hairBlack'),C('skin'),C('skinS'),C('hairBlackH')],[_,C('hairBlack'),C('hairBlackH'),_],[_,C('hairBlack'),C('hairBlackS'),C('hairBlack'),_],[C('hairBlackS'),C('hairBlack'),C('hairBlack'),C('hairBlackS')],[_,C('hairBlack'),C('hairBlackS'),_],[_,C('pants'),C('pantsS'),_],[_,C('pantsS'),C('pants'),_]],punch: [[_,C('hairBlackH'),C('hairBlack'),C('hairBlackH'),_],[C('hairBlack'),C('skinH'),C('skin'),C('hairBlack')],[C('hairBlack'),C('skin'),C('skinS'),C('hairBlackH'),C('hairBlackS'),C('skinH'),_],[C('hairBlackH'),C('hairBlack'),C('hairBlack'),C('hairBlackS'),C('skinS'),C('skin')],[_,C('hairBlack'),C('hairBlackS'),C('hairBlack'),_],[_,C('pants'),C('pantsS'),_],[_,C('pantsS'),C('pants'),_]],hit: [[_,C('hairBlackH'),C('hairBlack'),C('hairBlackS'),_],[C('hairBlack'),C('skinS'),C('redS'),C('hairBlackH')],[C('hairBlack'),C('skin'),C('skinS'),C('hairBlack')],[_,C('hairBlackH'),C('hairBlack'),_],[_,C('hairBlackS'),C('hairBlack'),C('hairBlackS'),_],[C('hairBlack'),C('hairBlack'),C('hairBlackS'),_],[_,C('hairBlackS'),C('hairBlack'),_],[_,C('pantsS'),C('pants'),_],[_,C('pants'),C('pantsS'),_]]},
+    diego: {idle: [[_,C('hairBrownH'),C('hairBrown'),C('hairBrownS'),_],[C('hairBrown'),C('skinH'),C('skin'),C('hairBrown')],[C('hairBrownS'),C('skin'),C('skinS'),C('hairBrown')],[_,C('purple'),C('purpleS'),_],[_,C('purpleS'),C('purple'),C('purpleS')],[C('purple'),C('purpleS'),C('purple'),C('purple')],[_,C('purple'),C('purpleS'),_],[_,C('pants'),C('pantsS'),_],[_,C('pantsS'),C('pants'),_]],punch: [[_,C('hairBrownH'),C('hairBrown'),C('hairBrownS'),_],[C('hairBrown'),C('skinH'),C('skin'),C('hairBrown')],[C('hairBrownS'),C('skin'),C('skinS'),C('purpleS'),C('skinH'),_],[_,C('purple'),C('purple'),C('purpleS'),C('skinS'),C('skin')],[_,C('purpleS'),C('purple'),C('purpleS'),_],[_,C('pants'),C('pantsS'),_],[_,C('pantsS'),C('pants'),_]],hit: [[_,C('hairBrownH'),C('hairBrownS'),C('hairBrown'),_],[C('hairBrown'),C('skinS'),C('redS'),C('hairBrownS')],[C('hairBrownS'),C('skin'),C('skinS'),C('hairBrown')],[_,C('purpleS'),C('purple'),_],[_,C('purple'),C('purpleS'),C('purple')],[C('purpleS'),C('purple'),C('purpleS'),C('purple')],[_,C('purpleS'),C('purple'),_],[_,C('pantsS'),C('pants'),_],[_,C('pants'),C('pantsS'),_]]},
+    kike: {idle: [[_,C('hairGreyH'),C('hairGrey'),C('hairGreyS'),_],[C('hairGrey'),C('skinH'),C('skin'),C('hairGrey')],[C('hairGreyS'),C('skin'),C('skinS'),C('hairGrey')],[_,C('jWhite'),C('jWhiteS'),_],[_,C('jWhiteS'),C('jWhite'),C('jWhiteS')],[C('jWhite'),C('jWhiteS'),C('jWhite'),C('jWhite')],[_,C('jWhite'),C('jWhiteS'),_],[_,C('pants'),C('pantsS'),_],[_,C('pantsS'),C('pants'),_]],punch: [[_,C('hairGreyH'),C('hairGrey'),C('hairGreyS'),_],[C('hairGrey'),C('skinH'),C('skin'),C('hairGrey')],[C('hairGreyS'),C('skin'),C('skinS'),C('jWhiteS'),C('skinH'),_],[_,C('jWhite'),C('jWhite'),C('jWhiteS'),C('skinS'),C('skin')],[_,C('jWhiteS'),C('jWhite'),C('jWhiteS'),_],[_,C('pants'),C('pantsS'),_],[_,C('pantsS'),C('pants'),_]],hit: [[_,C('hairGreyH'),C('hairGreyS'),C('hairGrey'),_],[C('hairGrey'),C('skinS'),C('redS'),C('hairGreyS')],[C('hairGreyS'),C('skin'),C('skinS'),C('hairGrey')],[_,C('jWhiteS'),C('jWhite'),_],[_,C('jWhite'),C('jWhiteS'),C('jWhite')],[C('jWhiteS'),C('jWhite'),C('jWhiteS'),C('jWhite')],[_,C('jWhiteS'),C('jWhite'),_],[_,C('pantsS'),C('pants'),_],[_,C('pants'),C('pantsS'),_]]},
+    mariano: {idle: [[_,C('hairBlondeH'),C('hairBlonde'),C('hairBlondeS'),_],[_,C('hairBlonde'),C('sunglasses'),C('sunglasses'),_],[_,C('skin'),C('skinS'),C('skin'),_],[_,C('jBlue'),C('jBlueS'),C('jBlue'),_],[C('jBlueS'),C('jBlue'),C('jBlueS'),C('jBlue')],[_,C('jBlue'),C('jBlueS'),_],[_,C('pants'),C('pantsS'),_],[_,C('pantsS'),C('pants'),_]],punch: [[_,C('hairBlondeH'),C('hairBlonde'),C('hairBlondeS'),_],[_,C('hairBlonde'),C('sunglasses'),C('sunglasses'),C('jBlueS'),C('skinH'),_],[_,C('skin'),C('skinS'),C('jBlue'),C('skinS'),C('skin')],[_,C('jBlue'),C('jBlueS'),C('jBlue'),_],[_,C('pants'),C('pantsS'),_],[_,C('pantsS'),C('pants'),_]],hit: [[_,C('hairBlondeH'),C('hairBlondeS'),C('hairBlonde'),_],[_,C('hairBlondeS'),C('sunglasses'),C('sunglasses'),_],[_,C('skinS'),C('redS'),C('skin'),_],[_,C('jBlueS'),C('jBlue'),C('jBlueS'),_],[C('jBlue'),C('jBlueS'),C('jBlue'),C('jBlue')],[_,C('jBlueS'),C('jBlue'),_],[_,C('pantsS'),C('pants'),_],[_,C('pants'),C('pantsS'),_]]},
+    laura: {idle: [[_,C('hairDarkBrownH'),C('hairDarkBrown'),_],[C('hairDarkBrown'),C('skinH'),C('skin'),C('hairDarkBrown')],[_,C('skin'),C('skinS'),C('hairDarkBrownS')],[_,C('lace'),C('jWhiteS'),_],[C('jWhiteS'),C('lace'),C('jWhiteS'),C('lace')],[_,C('lace'),C('jWhiteS'),_],[_,C('pants'),C('pantsS'),_],[_,C('pantsS'),C('pants'),_]],punch: [[_,C('hairDarkBrownH'),C('hairDarkBrown'),_],[C('hairDarkBrown'),C('skinH'),C('skin'),C('hairDarkBrown')],[_,C('skin'),C('skinS'),C('jWhiteS'),C('skinH'),_],[_,C('lace'),C('lace'),C('skinS'),C('skin')],[_,C('jWhiteS'),C('lace'),_],[_,C('pants'),C('pantsS'),_],[_,C('pantsS'),C('pants'),_]],hit: [[_,C('hairDarkBrownS'),C('hairDarkBrown'),_],[C('hairDarkBrown'),C('skinS'),C('redS'),C('hairDarkBrownS')],[_,C('skin'),C('skinS'),C('hairDarkBrown')],[_,C('jWhiteS'),C('lace'),_],[C('lace'),C('jWhiteS'),C('lace'),C('jWhiteS')],[_,C('jWhiteS'),C('lace'),_],[_,C('pantsS'),C('pants'),_],[_,C('pants'),C('pantsS'),_]]},
+    virginia: {idle: [[_,_,_,_,_,_,_,C('hairBlondeH'),C('hairBlonde'),C('hairBlonde'),C('hairBlondeH'),_],[_,_,_,_,_,C('hairBlondeH'),C('hairBlonde'),C('hairBlondeS'),C('hairBlonde'),C('hairBlonde'),C('hairBlonde'),C('hairBlondeH')],[_,_,_,_,C('hairBlonde'),C('skinH'),C('skin'),C('skin'),C('skinS'),C('hairBlondeS'),C('hairBlonde'),C('hairBlonde')],[_,_,_,C('hairBlondeS'),C('hairBlonde'),C('skin'),C('white'),C('skinS'),C('white'),C('skinS'),C('hairBlonde'),_],[_,_,_,C('hairBlonde'),C('skin'),C('skinS'),C('skin'),C('skin'),C('skinS'),C('hairBlondeS'),_],[_,_,_,C('pink'),C('pinkS'),C('skinS'),C('skin'),C('skinS'),C('pink'),C('pink'),_],[_,_,C('pinkS'),C('pink'),C('pink'),C('pinkS'),C('pink'),C('pink'),C('pink'),C('pink'),_],[_,C('pink'),C('pink'),C('pinkS'),C('pink'),C('pinkS'),C('pinkS'),C('pink'),C('pinkS'),C('pink'),_],[_,C('pinkS'),C('pink'),C('pink'),C('pinkS'),C('pinkS'),C('pink'),C('pinkS'),C('pink'),_,_],[_,_,C('pants'),C('pants'),C('pantsS'),C('pantsS'),C('pants'),C('pants'),_,_],[_,_,C('pantsS'),C('pants'),C('pants'),C('pants'),C('pants'),C('pantsS'),_,_],[_,_,C('pants'),C('pantsH'),_,_,_,C('pantsH'),C('pants'),_]],punch: [[_,_,_,_,_,_,_,C('hairBlondeH'),C('hairBlonde'),C('hairBlonde'),C('hairBlondeH'),_],[_,_,_,_,_,C('hairBlondeH'),C('hairBlonde'),C('hairBlondeS'),C('hairBlonde'),C('hairBlonde'),C('hairBlonde'),C('hairBlondeH')],[_,_,_,_,C('hairBlonde'),C('skinH'),C('skin'),C('skin'),C('skinS'),C('hairBlondeS'),C('hairBlonde'),C('hairBlonde')],[_,_,_,C('hairBlondeS'),C('hairBlonde'),C('skin'),C('white'),C('skinS'),C('white'),C('skinS'),C('hairBlonde'),C('skinH'),C('skinH'),_],[_,_,C('pink'),C('pink'),C('pinkS'),C('pink'),C('pink'),C('skinS'),C('skin'),C('skin'),C('skin')],[_,C('pinkS'),C('pink'),C('pink'),C('pink'),C('pinkS'),C('skin'),C('skinS'),C('skin'),_],[_,C('pinkS'),C('pink'),C('pinkS'),C('pink'),C('pinkS'),C('pink'),_,_,_],[_,_,C('pants'),C('pantsS'),C('pants'),C('pants'),_,_,_],[_,_,C('pantsS'),C('pants'),C('pantsS'),_,_,_,_],[_,_,C('pantsH'),C('pants'),_,_,_,_,_]],hit: [[_,_,_,_,_,_,C('hairBlonde'),C('hairBlonde'),C('hairBlondeH'),C('hairBlonde'),C('hairBlondeS'),_],[_,_,_,_,C('hairBlondeH'),C('hairBlondeS'),C('hairBlonde'),C('hairBlonde'),C('skinH'),C('skinS'),C('hairBlonde'),_],[_,_,_,C('hairBlonde'),C('hairBlonde'),C('skinS'),C('skin'),C('white'),C('skinS'),C('hairBlondeS'),_],[_,_,C('hairBlondeS'),C('skin'),C('skinS'),C('redS'),C('skinS'),C('skin'),C('hairBlondeS'),_],[_,_,C('pink'),C('pinkS'),C('skinS'),C('skin'),C('skinS'),C('pinkS'),_,_],[_,C('pinkS'),C('pink'),C('pinkS'),C('pink'),C('pink'),C('pink'),_,_],[C('pink'),C('pink'),C('pinkS'),C('pinkS'),C('pinkS'),C('pink'),_,_],[_,C('pants'),C('pants'),C('pantsS'),C('pants'),_,_,_],[_,C('pantsS'),C('pantsS'),C('pants'),_,_,_,_],[_,C('pants'),C('pantsH'),_,_,_,_,_]]}
+};
+const stealthCharacterData = { lucas: [[_,_,_,C('skinH'),C('skinH'),C('skinH'),C('skinH'),C('skinH'),_,_,_],[_,_,C('skinH'),C('skin'),C('skinS'),C('skinS'),C('skinS'),C('skin'),C('skinH'),_,_],[_,C('hairBrown'),C('skin'),C('sunglasses'),C('skinS'),C('skin'),C('sunglasses'),C('skinS'),C('skin'),C('hairBrown'),_],[C('hairBrown'),C('hairBrownS'),C('skin'),C('skinS'),C('skinS'),C('skinS'),C('skinS'),C('skinS'),C('skinS'),C('hairBrownS'),C('hairBrown'),_],[C('hairBrown'),C('hairBrownS'),C('hairBrown'),C('hairBrownS'),C('hairBrownS'),C('hairBrownS'),C('hairBrownS'),C('hairBrown'),C('hairBrownS'),C('hairBrown'),_],[_,C('shirtPinkS'),C('shirtPink'),C('shirtPinkS'),C('shirtPink'),C('shirtPink'),C('shirtPink'),C('shirtPinkS'),C('shirtPink'),C('shirtPinkS'),_],[_,C('shirtPink'),C('shirtPink'),C('shirtPink'),C('shirtPinkS'),C('shirtPinkS'),C('shirtPink'),C('shirtPink'),C('shirtPink'),C('shirtPink'),_],[_,C('shirtPink'),C('notebookS'),C('notebook'),C('notebook'),C('notebook'),C('notebook'),C('notebook'),C('shirtPinkS'),_],[_,_,C('pantsS'),C('notebookS'),C('notebookS'),C('notebook'),C('notebook'),C('notebookS'),C('pants'),C('pantsS'),_,_],[_,_,C('pantsH'),C('pants'),C('pantsS'),_,_,C('pantsS'),C('pants'),C('pantsH'),_,_],], diego: [[_,_,C('hairBrownH'),C('hairBrown'),C('hairBrownS'),C('hairBrown'),C('hairBrownH'),_],[_,C('hairBrown'),C('skinH'),C('skin'),C('skin'),C('skinS'),C('hairBrown'),_],[C('hairBrown'),C('skin'),C('white'),C('skinS'),C('white'),C('skin'),C('hairBrownS'),_],[C('hairBrownS'),C('skin'),C('skinS'),C('skinS'),C('skinS'),C('skin'),C('hairBrown'),_],[_,C('purple'),C('purpleS'),C('purple'),C('purple'),C('purpleS'),C('purple'),_],[_,C('purpleS'),C('purple'),C('purpleS'),C('purple'),C('purpleS'),C('purple'),C('purpleS'),_],[_,C('purple'),C('notebookS'),C('notebook'),C('notebook'),C('notebook'),C('purpleS'),_],[_,C('purpleS'),C('notebook'),C('notebook'),C('notebookS'),C('notebook'),C('purple'),_],[_,_,C('pantsS'),C('pants'),C('pantsH'),C('pants'),C('pantsS'),_],[_,_,C('pantsS'),_,C('pants'),_,C('pantsS'),_],], virginia: [[_,C('hairBlondeH'),C('hairBlonde'),C('hairBlondeH'),C('hairBlonde'),C('hairBlondeH'),C('hairBlonde'),C('hairBlonde'),C('hairBlondeH'),_],[C('hairBlondeS'),C('hairBlonde'),C('hairBlondeH'),C('skinH'),C('skin'),C('skin'),C('skinS'),C('hairBlonde'),C('hairBlondeS'),_],[C('hairBlondeS'),C('hairBlonde'),C('skin'),C('white'),C('skinS'),C('skinS'),C('white'),C('skin'),C('hairBlonde'),C('hairBlondeS'),_],[C('hairBlonde'),C('hairBlondeS'),C('skin'),C('skinS'),C('skin'),C('skin'),C('skinS'),C('skinS'),C('hairBlonde'),C('hairBlondeS'),_],[_,C('hairBlondeS'),C('pink'),C('pinkS'),C('pink'),C('pink'),C('pinkS'),C('pink'),C('hairBlonde'),_],[_,C('hairBlonde'),C('pink'),C('pinkS'),C('pink'),C('pink'),C('pinkS'),C('pink'),C('hairBlondeS'),_],[_,_,C('pinkS'),C('pink'),C('pinkS'),C('pink'),C('pinkS'),C('pink'),_,_],[_,_,C('pinkS'),C('pink'),C('pink'),C('pink'),C('pinkS'),C('pink'),_,_],[_,_,_,C('pants'),C('pantsS'),_,_,C('pants'),C('pantsS'),_,_],[_,_,_,C('pantsS'),C('pants'),_,_,C('pantsS'),C('pants'),_,_],] };
+
+// --- FULLSCREEN & ORIENTATION ---
+document.getElementById('start-game-btn').addEventListener('click', async () => {
+    try {
+        await document.documentElement.requestFullscreen();
+        if (screen.orientation && screen.orientation.lock) {
+            await screen.orientation.lock('landscape');
+        }
+    } catch (err) {
+        console.warn("Fullscreen or orientation lock failed:", err);
+    } finally {
+        gameWrapper.classList.add('fullscreen-active');
+        startGameScreen.classList.add('hidden');
+        modeSelectScreen.classList.remove('hidden');
+    }
+});
+
+
+// --- MODE SELECTION ---
+document.getElementById('select-stealth-mode').addEventListener('click', () => {
+    currentMode = 'stealth';
+    modeSelectScreen.classList.add('hidden');
+    characterSelectScreen.classList.remove('hidden');
+    setupCharacterSelection();
+});
+document.getElementById('select-fight-mode').addEventListener('click', () => {
+    currentMode = 'fight';
+    modeSelectScreen.classList.add('hidden');
+    characterSelectScreen.classList.remove('hidden');
+    setupCharacterSelection();
+});
+
+
+// --- CHARACTER SELECTION ---
+function setupCharacterSelection() {
+    const mainPortraitCanvas = document.getElementById('character-portrait-canvas');
+    const mainPortraitCtx = mainPortraitCanvas.getContext('2d');
+    mainPortraitCtx.imageSmoothingEnabled = false;
+    const characterNameEl = document.getElementById('character-name');
+    const selectionIcons = document.querySelectorAll('.selection-icon');
+
+    function updateMainDisplay(charName) {
+        characterNameEl.textContent = charName;
+        mainPortraitCtx.clearRect(0, 0, mainPortraitCanvas.width, mainPortraitCanvas.height);
+        drawPixelArt(mainPortraitCtx, characterPortraits[charName], 0, 0, 256, 256);
+        selectionIcons.forEach(icon => icon.classList.toggle('active', icon.dataset.char === charName));
+    }
+
+    selectionIcons.forEach(icon => {
+        const charName = icon.dataset.char;
+        if (!characterPortraits[charName]) {
+             console.error(`Portrait for ${charName} is missing.`);
+             return;
+        }
+        const iconCtx = icon.getContext('2d');
+        iconCtx.imageSmoothingEnabled = false;
+        drawPixelArt(iconCtx, characterPortraits[charName], 0, 0, 80, 80);
+        
+        const startFn = () => {
+            if (currentMode === 'stealth') {
+                startStealthGame(charName);
+            } else if (currentMode === 'fight') {
+                startFightGame(charName);
+            }
+        };
+        icon.addEventListener('mouseenter', () => updateMainDisplay(charName));
+        icon.addEventListener('click', startFn);
+        icon.addEventListener('touchend', (e) => { e.preventDefault(); startFn(); });
+    });
+
+    updateMainDisplay('lucas');
+}
+
+// --- STEALTH MODE ---
+const gameContainer = document.getElementById('game-container');
+const gameCanvas = document.getElementById('gameCanvas');
+const stealthCtx = gameCanvas.getContext('2d');
+const virginiaSpeechBubble = document.getElementById('virginia-speech');
+const TILE_SIZE = 40;
+const MAP_COLS = 20;
+const MAP_ROWS = 15;
+let player, virginia, repairShop, stealthState;
+
+const mapLayout = [
+    "####################",
+    "#S                 #",
+    "# B B      B       #",
+    "#                  #",
+    "###########      ###",
+    "# B       #        #",
+    "#         # B      #",
+    "# B       #        #",
+    "###########        #",
+    "#         B        #",
+    "# B                #",
+    "#         ##########",
+    "#     B            #",
+    "#                  #",
+    "###################R",
+];
+
+
+class StealthPlayer {
+    constructor(charName, sprite) {
+        this.name = charName;
+        this.x = 1.5 * TILE_SIZE;
+        this.y = 1.5 * TILE_SIZE;
+        this.size = TILE_SIZE * 0.8;
+        this.speed = 2.5;
+        this.sprite = sprite;
+    }
+    draw(ctx) {
+        drawPixelArt(ctx, this.sprite, this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+    }
+    update() {
+        let nextX = this.x;
+        let nextY = this.y;
+
+        if (activeKeys['ArrowUp'] || activeKeys['w']) nextY -= this.speed;
+        if (activeKeys['ArrowDown'] || activeKeys['s']) nextY += this.speed;
+        if (activeKeys['ArrowLeft'] || activeKeys['a']) nextX -= this.speed;
+        if (activeKeys['ArrowRight'] || activeKeys['d']) nextX += this.speed;
+
+        if (!this.collidesWithWall(nextX, this.y)) this.x = nextX;
+        if (!this.collidesWithWall(this.x, nextY)) this.y = nextY;
+    }
+    collidesWithWall(x, y) {
+        const buffer = this.size / 2;
+        const checkPoints = [
+            {x: x - buffer, y: y - buffer}, {x: x + buffer, y: y - buffer},
+            {x: x - buffer, y: y + buffer}, {x: x + buffer, y: y + buffer}
+        ];
+        for (const point of checkPoints) {
+            const c = Math.floor(point.x / TILE_SIZE);
+            const r = Math.floor(point.y / TILE_SIZE);
+            if (r < 0 || r >= MAP_ROWS || c < 0 || c >= MAP_COLS || mapLayout[r][c] === '#') {
+                return true;
+            }
+        }
+        return false;
+    }
+    isHiding() {
+        const c = Math.floor(this.x / TILE_SIZE);
+        const r = Math.floor(this.y / TILE_SIZE);
+        return mapLayout[r] && mapLayout[r][c] === 'B';
+    }
+}
+
+class Virginia {
+     constructor() {
+        this.size = TILE_SIZE * 0.9;
+        this.sprite = stealthCharacterData.virginia;
+        this.patrolPath = [ {x: 18, y: 2}, {x: 12, y: 2}, {x: 12, y: 8}, {x: 6, y: 8}, {x: 6, y: 13}, {x: 18, y: 13} ];
+        this.pathIndex = 0;
+        this.x = this.patrolPath[0].x * TILE_SIZE + TILE_SIZE/2;
+        this.y = this.patrolPath[0].y * TILE_SIZE + TILE_SIZE/2;
+        this.speed = 1.5;
+        this.dx = 0;
+        this.dy = 0;
+        this.visionLength = TILE_SIZE * 5;
+        this.visionAngle = Math.PI / 4; // 45 degrees
+        this.speechTimer = 200; // Time until next speech
+        this.speechDuration = 180; // How long the speech bubble stays
+     }
+     draw(ctx) {
+        drawPixelArt(ctx, this.sprite, this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+        this.drawVisionCone(ctx);
+        ctx.fillStyle = 'white';
+        ctx.font = '10px "Press Start 2P"';
+        ctx.textAlign = 'center';
+        ctx.fillText('Virginia', this.x, this.y + this.size / 2 + 12);
+     }
+     drawVisionCone(ctx) {
+        const angle = Math.atan2(this.dy, this.dx);
+        this.visionPoints = [
+            { x: this.x, y: this.y },
+            { x: this.x + this.visionLength * Math.cos(angle - this.visionAngle / 2), y: this.y + this.visionLength * Math.sin(angle - this.visionAngle / 2) },
+            { x: this.x + this.visionLength * Math.cos(angle + this.visionAngle / 2), y: this.y + this.visionLength * Math.sin(angle + this.visionAngle / 2) }
+        ];
+
+        ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+        ctx.beginPath();
+        ctx.moveTo(this.visionPoints[0].x, this.visionPoints[0].y);
+        ctx.lineTo(this.visionPoints[1].x, this.visionPoints[1].y);
+        ctx.lineTo(this.visionPoints[2].x, this.visionPoints[2].y);
+        ctx.closePath();
+        ctx.fill();
+    }
+     update() {
+        const target = this.patrolPath[this.pathIndex];
+        const targetX = target.x * TILE_SIZE + TILE_SIZE/2;
+        const targetY = target.y * TILE_SIZE + TILE_SIZE/2;
+        
+        const angle = Math.atan2(targetY - this.y, targetX - this.x);
+        this.dx = Math.cos(angle);
+        this.dy = Math.sin(angle);
+        
+        this.x += this.dx * this.speed;
+        this.y += this.dy * this.speed;
+        
+        const distance = Math.sqrt((targetX - this.x)**2 + (targetY - this.y)**2);
+        if(distance < this.speed * 1.5) {
+            this.pathIndex = (this.pathIndex + 1) % this.patrolPath.length;
+        }
+
+        this.updateSpeechBubble();
+     }
+     isPlayerInVisionCone(player) {
+        const pt = { x: player.x, y: player.y };
+        const [v1, v2, v3] = this.visionPoints;
+        const sign = (p1, p2, p3) => (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
+        const d1 = sign(pt, v1, v2);
+        const d2 = sign(pt, v2, v3);
+        const d3 = sign(pt, v3, v1);
+        const has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+        const has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+        return !(has_neg && has_pos);
+    }
+    updateSpeechBubble() {
+        if (this.speechTimer > 0) {
+            this.speechTimer--;
+        } else {
+            virginiaSpeechBubble.innerText = "¡Si te encuentro te asigno un curso de mierda!";
+            virginiaSpeechBubble.style.left = `${this.x - 60}px`;
+            virginiaSpeechBubble.style.top = `${this.y - this.size - 40}px`;
+            virginiaSpeechBubble.classList.remove('hidden');
+            this.speechDuration--;
+            if (this.speechDuration <= 0) {
+                virginiaSpeechBubble.classList.add('hidden');
+                this.speechTimer = 400; // Reset timer for next taunt
+                this.speechDuration = 180;
+            }
+        }
+    }
+}
+
+function startStealthGame(charName) {
+    playStartSound();
+    characterSelectScreen.classList.add('hidden');
+    gameContainer.classList.remove('hidden');
+    initStealthGame(charName, stealthCharacterData[charName] || stealthCharacterData['lucas']);
+}
+
+function initStealthGame(charName, playerSprite) {
+    stealthCtx.imageSmoothingEnabled = false;
+    gameCanvas.width = TILE_SIZE * MAP_COLS;
+    gameCanvas.height = TILE_SIZE * MAP_ROWS;
+    
+    mapLayout.forEach((row, r) => {
+        for (let c = 0; c < row.length; c++) {
+            const char = row[c];
+            if (char === 'S') {
+                player = new StealthPlayer(charName, playerSprite);
+                player.x = c * TILE_SIZE + TILE_SIZE / 2;
+                player.y = r * TILE_SIZE + TILE_SIZE / 2;
+            }
+             if (char === 'R') {
+                repairShop = { x: c * TILE_SIZE, y: r * TILE_SIZE, size: TILE_SIZE };
+            }
+        }
+    });
+
+    virginia = new Virginia();
+    stealthState = 'playing';
+    stealthLoop();
+}
+
+function drawStealthMap() {
+    for (let r = 0; r < MAP_ROWS; r++) {
+        for (let c = 0; c < MAP_COLS; c++) {
+            const char = mapLayout[r][c];
+            stealthCtx.fillStyle = PALETTE.pavementS;
+            stealthCtx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            if (char === '#') {
+                stealthCtx.fillStyle = PALETTE.brick;
+                stealthCtx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            } else if (char === 'B') {
+                 stealthCtx.fillStyle = PALETTE.bushD;
+                 stealthCtx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            } else if (char === 'R') {
+                stealthCtx.fillStyle = PALETTE.brickS;
+                stealthCtx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                stealthCtx.fillStyle = PALETTE.door;
+                stealthCtx.fillRect(c * TILE_SIZE + TILE_SIZE * 0.2, r * TILE_SIZE + TILE_SIZE * 0.1, TILE_SIZE * 0.6, TILE_SIZE * 0.9);
+                stealthCtx.fillStyle = PALETTE.doorKnob;
+                stealthCtx.fillRect(c * TILE_SIZE + TILE_SIZE * 0.7, r * TILE_SIZE + TILE_SIZE * 0.5, TILE_SIZE * 0.1, TILE_SIZE * 0.1);
+                stealthCtx.fillStyle = PALETTE.white;
+                stealthCtx.font = '8px "Press Start 2P"';
+                stealthCtx.textAlign = 'center';
+                stealthCtx.fillText('FIX', c * TILE_SIZE + TILE_SIZE/2, r * TILE_SIZE + TILE_SIZE*0.3);
+            }
+        }
+    }
+}
+
+function checkStealthConditions() {
+    // Check if player is caught
+    if (!player.isHiding() && virginia.isPlayerInVisionCone(player)) {
+        stealthState = 'gameOver';
+        cancelAnimationFrame(animationFrameId);
+        
+        const capitalizedName = player.name.charAt(0).toUpperCase() + player.name.slice(1);
+        const message = `Hola ${capitalizedName}, te encajo un curso para que hagas !`;
+
+        showCustomStealthMessage(message, () => {
+            showGameOverScreen('stealth');
+        });
+    }
+
+    // Check if player wins
+    const distToShop = Math.sqrt((player.x - (repairShop.x + repairShop.size/2))**2 + (player.y - (repairShop.y + repairShop.size/2))**2);
+    if (distToShop < player.size) {
+        stealthState = 'win';
+        cancelAnimationFrame(animationFrameId);
+        showWinScreen('stealth');
+    }
+}
+
+function stealthLoop() {
+    if (stealthState !== 'playing') {
+        cancelAnimationFrame(animationFrameId);
+        return;
+    }
+
+    stealthCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+    drawStealthMap();
+    
+    player.update();
+    player.draw(stealthCtx);
+
+    virginia.update();
+    virginia.draw(stealthCtx);
+    
+    checkStealthConditions();
+
+    animationFrameId = requestAnimationFrame(stealthLoop);
+}
+
+// --- FIGHT MODE ---
+const fightContainer = document.getElementById('fight-container');
+const fightCanvas = document.getElementById('fightCanvas');
+const fightCtx = fightCanvas.getContext('2d');
+let playerFighter, virginiaFighter, fightTimerInterval, fightState;
+
+class Fighter {
+    constructor(name, spriteSet, x, y, isPlayer = false) {
+        this.name = name;
+        this.sprites = spriteSet;
+        this.x = x;
+        this.y = y;
+        this.isPlayer = isPlayer;
+        this.hitsTaken = 0;
+        this.state = 'idle'; // idle, punch, hit
+        this.state_timer = 0;
+        this.width = 200;
+        this.height = 300;
+        this.speed = 5;
+        this.flipped = !isPlayer;
+        this.hitFlashTimer = 0;
+    }
+
+    draw(ctx) {
+        const currentSprite = this.sprites[this.state] || this.sprites.idle;
+        
+        ctx.save();
+        if (this.hitFlashTimer > 0 && this.hitFlashTimer % 2 === 0) { // Flashing effect
+            ctx.globalAlpha = 0.5;
+        }
+        drawPixelArt(ctx, currentSprite, this.x, this.y, this.width, this.height, this.flipped);
+        ctx.restore();
+    }
+    
+    update() {
+        if (this.state !== 'idle' && this.state_timer > 0) {
+            this.state_timer--;
+            if (this.state_timer === 0) {
+                this.state = 'idle';
+            }
+        }
+        if (this.hitFlashTimer > 0) {
+            this.hitFlashTimer--;
+        }
+
+        if (this.isPlayer && fightState === 'fighting') {
+             if (activeKeys['ArrowLeft'] || activeKeys['a']) this.x -= this.speed;
+             if (activeKeys['ArrowRight'] || activeKeys['d']) this.x += this.speed;
+             this.x = Math.max(0, Math.min(fightCanvas.width - this.width, this.x));
+        }
+    }
+
+    punch() {
+        if (this.state === 'idle') {
+            this.state = 'punch';
+            this.state_timer = 15; 
+            playPunchSound();
+        }
+    }
+
+    takeHit() {
+        if (this.hitsTaken < 4) {
+            this.hitsTaken++;
+            this.state = 'hit';
+            this.state_timer = 20;
+            this.hitFlashTimer = 10; // Flash for 10 frames
+            playHitSound();
+            updateHealthBars();
+             if (this.hitsTaken >= 4) {
+                fightState = 'gameOver';
+            }
+        }
+    }
+}
+
+
+function startFightGame(charName) {
+    playStartSound();
+    characterSelectScreen.classList.add('hidden');
+    fightContainer.classList.remove('hidden');
+    initFight(charName);
+}
+
+function initFight(charName) {
+    fightCtx.imageSmoothingEnabled = false;
+    const groundLevel = fightCanvas.height - 350;
+    playerFighter = new Fighter(charName, fightSprites[charName], 150, groundLevel, true);
+    virginiaFighter = new Fighter('virginia', fightSprites.virginia, 500, groundLevel, false);
+    
+    document.getElementById('player-name').textContent = playerFighter.name;
+    document.getElementById('virginia-name').textContent = virginiaFighter.name;
+
+    fightState = 'intro';
+    document.getElementById('timer').textContent = "99";
+    
+    updateHealthBars();
+    
+    showOverlayText("ROUND 1", () => {
+        showOverlayText("FIGHT!", () => {
+            fightState = 'fighting';
+            fightTimerInterval = setInterval(countdown, 1000);
+            fightLoop();
+        });
+    });
+}
+
+function countdown() {
+    let currentTime = parseInt(document.getElementById('timer').textContent);
+    if (currentTime > 0 && fightState === 'fighting') {
+        document.getElementById('timer').textContent = currentTime - 1;
+    } else {
+        fightState = 'gameOver'; // Time's up
+    }
+}
+
+function updateHealthBars() {
+    const playerHealthPercent = Math.max(0, 100 - (playerFighter.hitsTaken * 25));
+    const virginiaHealthPercent = Math.max(0, 100 - (virginiaFighter.hitsTaken * 25));
+    document.getElementById('player-health').style.width = playerHealthPercent + '%';
+    document.getElementById('virginia-health').style.width = virginiaHealthPercent + '%';
+}
+
+function checkHits() {
+    // Player attacking Virginia
+    if (playerFighter.state === 'punch' && playerFighter.state_timer === 10) { 
+        const distance = virginiaFighter.x - (playerFighter.x + playerFighter.width);
+        if (distance > -50 && distance < 50) { 
+            virginiaFighter.takeHit();
+        }
+    }
+
+    // Virginia attacking Player
+    if (virginiaFighter.state === 'punch' && virginiaFighter.state_timer === 10) {
+         const distance = virginiaFighter.x - (playerFighter.x + playerFighter.width);
+         if (distance > -50 && distance < 50) {
+            playerFighter.takeHit();
+        }
+    }
+}
+
+function updateVirginiaAI() {
+    if (virginiaFighter.state === 'idle' && fightState === 'fighting') {
+        const distance = virginiaFighter.x - (playerFighter.x + playerFighter.width);
+        if (distance < 50) { // Close enough to punch
+            if (Math.random() < 0.05) {
+                virginiaFighter.punch();
+            }
+        } else if (distance > 60) { // Move closer
+            virginiaFighter.x -= virginiaFighter.speed * 0.5;
+        }
+    }
+}
+
+function drawFightScene() {
+    fightCtx.clearRect(0, 0, fightCanvas.width, fightCanvas.height);
+    drawPixelArt(fightCtx, fightBackground, 0, 0, fightCanvas.width, fightCanvas.height);
+    
+    playerFighter.draw(fightCtx);
+    virginiaFighter.draw(fightCtx);
+}
+
+function fightLoop() {
+    if (fightState === 'gameOver') {
+        cancelAnimationFrame(animationFrameId);
+        clearInterval(fightTimerInterval);
+        const playerWon = playerFighter.hitsTaken < virginiaFighter.hitsTaken;
+        showOverlayText(playerWon ? "YOU WIN" : "K.O.", () => {
+             if(playerWon) showWinScreen('fight');
+             else showGameOverScreen('fight');
+        });
+        return;
+    }
+    
+    playerFighter.update();
+    virginiaFighter.update();
+    updateVirginiaAI();
+    checkHits();
+    
+    drawFightScene();
+    
+    animationFrameId = requestAnimationFrame(fightLoop);
+}
+
+function showOverlayText(text, callback) {
+    fightOverlay.textContent = text;
+    fightOverlay.style.opacity = 1;
+    setTimeout(() => {
+        fightOverlay.style.opacity = 0;
+        if(callback) setTimeout(callback, 500);
+    }, 1500);
+}
+
+function showCustomStealthMessage(message, callback) {
+    const customOverlay = document.getElementById('fight-overlay-text');
+    customOverlay.innerHTML = message.replace('!', '!<br>'); // Add a line break
+    customOverlay.style.fontSize = '24px';
+    customOverlay.style.lineHeight = '1.5';
+    customOverlay.style.textAlign = 'center';
+    customOverlay.style.textShadow = '2px 2px 4px #000';
+    customOverlay.style.opacity = 1;
+    setTimeout(() => {
+        customOverlay.style.opacity = 0;
+        setTimeout(() => {
+            // Reset styles for fight mode
+            customOverlay.style.fontSize = '80px';
+            customOverlay.style.textShadow = '4px 4px 0 #c0392b, 8px 8px 0px #000';
+            if(callback) callback();
+        }, 500);
+    }, 3000);
+}
+
+// --- GENERAL ---
+function showGameOverScreen(mode) {
+    const title = document.getElementById('game-over-title');
+    const text = document.getElementById('game-over-text');
+    if (mode === 'fight') {
+        title.textContent = "K.O.";
+        text.innerHTML = "¡Virginia te ha derrotado!<br><br><span class='text-sm'>Ahora deberás hacer otro curso de mierda !</span>";
+    } else {
+        title.textContent = "GAME OVER";
+        text.textContent = "¡Virginia te ha visto!";
+    }
+    playGameOverSound();
+    gameOverScreen.classList.remove('hidden');
+}
+
+function showWinScreen(mode) {
+    const title = document.getElementById('win-title');
+    const text = document.getElementById('win-text');
+    if (mode === 'fight') {
+        title.textContent = "YOU WIN";
+        text.textContent = "¡Has derrotado a Virginia!";
+    } else {
+        title.textContent = "¡LO LOGRASTE!";
+        text.textContent = "La notebook está a salvo.";
+    }
+    playWinSound();
+    winScreen.classList.remove('hidden');
+}
+
+
+function resetToMenu() {
+    fightContainer.classList.add('hidden');
+    gameContainer.classList.add('hidden');
+    gameOverScreen.classList.add('hidden');
+    winScreen.classList.add('hidden');
+    characterSelectScreen.classList.add('hidden');
+    modeSelectScreen.classList.remove('hidden');
+
+    cancelAnimationFrame(animationFrameId);
+    if(fightTimerInterval) clearInterval(fightTimerInterval);
+}
+restartButton.addEventListener('click', resetToMenu);
+playAgainButton.addEventListener('click', resetToMenu);
+
+// --- Keyboard Controls ---
+window.addEventListener('keydown', (e) => { 
+    activeKeys[e.key] = true;
+    if (currentMode === 'fight' && e.code === 'Space' && playerFighter && playerFighter.state === 'idle') {
+        playerFighter.punch();
+    }
+});
+window.addEventListener('keyup', (e) => { activeKeys[e.key] = false; });
+
+// --- Touch Controls for Stealth Mode ---
+gameCanvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+}, { passive: false });
+
+gameCanvas.addEventListener('touchmove', (e) => {
+    if (currentMode !== 'stealth') return;
+    e.preventDefault();
+    const touchEndX = e.touches[0].clientX;
+    const touchEndY = e.touches[0].clientY;
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+    
+    // Reset keys before setting new one
+    activeKeys = {};
+
+    if (Math.abs(diffX) > Math.abs(diffY)) { // Horizontal swipe
+        if (diffX > 0) activeKeys['ArrowRight'] = true;
+        else activeKeys['ArrowLeft'] = true;
+    } else { // Vertical swipe
+        if (diffY > 0) activeKeys['ArrowDown'] = true;
+        else activeKeys['ArrowUp'] = true;
+    }
+}, { passive: false });
+
+gameCanvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    activeKeys = {}; // Stop moving when touch ends
+});
+
+
+</script>
+</body>
+</html>
+
