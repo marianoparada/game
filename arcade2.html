@@ -427,7 +427,7 @@ const C = (color) => {
         wood: '#a67c52', woodS: '#6f5038', bgDojo: '#6c757d'
     };
     return PALETTE[color] || color;
-}
+};
 
 
 function drawPixelArt(ctx, spriteData, x, y, width, height, flipped = false) {
@@ -481,11 +481,8 @@ const stealthCharacterData = { lucas: [[_,C('skin'),C('skin'),_],[C('skin'),C('w
 document.getElementById('start-game-btn').addEventListener('click', async () => {
     try {
         await document.documentElement.requestFullscreen();
-        if (screen.orientation && screen.orientation.lock) {
-            await screen.orientation.lock('landscape');
-        }
     } catch (err) {
-        console.warn("Fullscreen or orientation lock failed:", err);
+        console.warn("Fullscreen failed:", err);
     } finally {
         gameWrapper.classList.add('fullscreen-active');
         startGameScreen.classList.add('hidden');
@@ -1077,39 +1074,6 @@ window.addEventListener('keydown', (e) => {
     }
 });
 window.addEventListener('keyup', (e) => { activeKeys[e.key] = false; });
-
-// --- Touch Controls for Stealth Mode ---
-gameCanvas.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-}, { passive: false });
-
-gameCanvas.addEventListener('touchmove', (e) => {
-    if (currentMode !== 'stealth') return;
-    e.preventDefault();
-    const touchEndX = e.touches[0].clientX;
-    const touchEndY = e.touches[0].clientY;
-    const diffX = touchEndX - touchStartX;
-    const diffY = touchEndY - touchStartY;
-    
-    // Reset keys before setting new one
-    activeKeys = {};
-
-    if (Math.abs(diffX) > Math.abs(diffY)) { // Horizontal swipe
-        if (diffX > 0) activeKeys['ArrowRight'] = true;
-        else activeKeys['ArrowLeft'] = true;
-    } else { // Vertical swipe
-        if (diffY > 0) activeKeys['ArrowDown'] = true;
-        else activeKeys['ArrowUp'] = true;
-    }
-}, { passive: false });
-
-gameCanvas.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    activeKeys = {}; // Stop moving when touch ends
-});
-
 
 </script>
 </body>
